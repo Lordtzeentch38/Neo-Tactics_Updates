@@ -2,7 +2,6 @@
     "version": "0.15.1",
     "assets": {
         "index.html": "a14de7afd8e0271cb11059153746567f",
-        "manifest.json.backup": "f3edf451991f6c17c4c95cdaae5dd8b4",
         "style.css": "d65e182d7507bf36ab65364aa4d863da",
         "assets/images/Neo-Tactics-Cover.png": "814e02a93aab554b96de66606c052f11",
         "assets/images/Neo-Tactics-Defeat.png": "cc9a3e09d403579ee6907b99e79a54eb",
@@ -54,7 +53,6 @@
         "JS/Constants.js": "ad75eb96827da8661a5b656593a6334a",
         "JS/Game.js": "3567284079796b340e8be7f79e66b5c7",
         "JS/Grid.js": "398268a9ca4d296ab90b5492a52e7f7b",
-        "JS/JS.rar": "5905af9126be18eb1ea53ad6c2c0d045",
         "JS/main.js": "b8c9d9a791de7ff0916199dc24a6547e",
         "JS/UI.js": "fb84da56b6253a3dfab01dc42f49f822"
     }
