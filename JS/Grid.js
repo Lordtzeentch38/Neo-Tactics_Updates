@@ -1,13 +1,15 @@
-import { BOARD_SIZE, TIBERIUM_TYPES } from './Constants.js';
+import { DEFAULT_BOARD_SIZE, TIBERIUM_TYPES } from './Constants.js';
 
 export class Grid {
-    constructor() {
+    constructor(size = DEFAULT_BOARD_SIZE) {
+        this.size = size;
         this.board = [];
     }
 
     generateMap() {
         this.board = [];
-        for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
+        const totalTiles = this.size * this.size;
+        for (let i = 0; i < totalTiles; i++) {
             let type = 'ground';
             let tibData = null;
             const r = Math.random();
@@ -20,30 +22,45 @@ export class Grid {
             }
             this.board.push({ id: i, type, tiberium: tibData });
         }
-        // Clear start areas
-        [0,1,2,10,11,12, 99,98,97,89,88,87].forEach(i => {
-            this.board[i].type = 'ground';
-            this.board[i].tiberium = null;
+
+        // Dynamic SAFE ZONES (Corners)
+        // TL(0,0), TR(N-1,0), BL(0,N-1), BR(N-1,N-1) + Neighbors
+        const safeIndices = new Set();
+        const corners = [
+            0, this.size - 1,
+            (this.size * (this.size - 1)), (this.size * this.size) - 1
+        ];
+
+        corners.forEach(corner => {
+            safeIndices.add(corner);
+            this.getNeighbors(corner).forEach(n => safeIndices.add(n));
+        });
+
+        safeIndices.forEach(i => {
+            if (this.board[i]) {
+                this.board[i].type = 'ground';
+                this.board[i].tiberium = null;
+            }
         });
     }
 
     getStepCost(fromIdx, toIdx) {
-        const x1 = fromIdx % 10, y1 = Math.floor(fromIdx / 10);
-        const x2 = toIdx % 10, y2 = Math.floor(toIdx / 10);
+        const x1 = fromIdx % this.size, y1 = Math.floor(fromIdx / this.size);
+        const x2 = toIdx % this.size, y2 = Math.floor(toIdx / this.size);
         return (x1 !== x2 && y1 !== y2) ? 2 : 1;
     }
 
     getNeighbors(idx) {
-        const x = idx % 10;
-        const y = Math.floor(idx / 10);
+        const x = idx % this.size;
+        const y = Math.floor(idx / this.size);
         const neighbors = [];
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 if (dx === 0 && dy === 0) continue;
                 const nx = x + dx;
                 const ny = y + dy;
-                if (nx >= 0 && nx < 10 && ny >= 0 && ny < 10) {
-                    neighbors.push(ny * 10 + nx);
+                if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+                    neighbors.push(ny * this.size + nx);
                 }
             }
         }
@@ -53,7 +70,7 @@ export class Grid {
     findPath(startIdx, endIdx, units) {
         let dist = {};
         let prev = {};
-        let queue = [{idx: startIdx, cost: 0}];
+        let queue = [{ idx: startIdx, cost: 0 }];
         dist[startIdx] = 0;
         prev[startIdx] = null;
 
@@ -76,7 +93,7 @@ export class Grid {
                 if (dist[v] === undefined || newCost < dist[v]) {
                     dist[v] = newCost;
                     prev[v] = u.idx;
-                    queue.push({idx: v, cost: newCost});
+                    queue.push({ idx: v, cost: newCost });
                 }
             }
         }

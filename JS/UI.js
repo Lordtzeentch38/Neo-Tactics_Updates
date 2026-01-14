@@ -114,10 +114,11 @@ export class UI {
             // --- AGGIORNAMENTO PROPRIETÀ (Senza toccare innerHTML se non serve) ---
 
             // 1. Posizione
-            const x = (u.index % 10) * 10;
-            const y = Math.floor(u.index / 10) * 10;
-            el.style.left = `${x}%`;
-            el.style.top = `${y}%`;
+            const mapSize = this.game.mapSize || 10;
+            const x = (u.index % mapSize) * 64;
+            const y = Math.floor(u.index / mapSize) * 64;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
 
             // 2. Icona (Solo se cambia tipo o è nuovo)
             const inner = el.querySelector('.unit-inner');
@@ -189,9 +190,9 @@ export class UI {
         });
     }
 
-    refreshHighlights(selectedUnit, validMoves, validAttacks, builderMode, board, units) {
+    refreshHighlights(selectedUnit, validMoves, validAttacks, builderMode, board, units, rangeTiles = []) {
         document.querySelectorAll('.tile').forEach(el => {
-            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target');
+            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target', 'range-highlight');
             const i = parseInt(el.dataset.index);
 
             if (selectedUnit && selectedUnit.index === i) {
@@ -199,6 +200,14 @@ export class UI {
                 if (selectedUnit.owner === 'enemy') el.classList.add('selected-enemy');
             }
         });
+
+        // Apply Range Highlights
+        if (rangeTiles && rangeTiles.length > 0) {
+            rangeTiles.forEach(i => {
+                const el = document.querySelector(`.tile[data-index="${i}"]`);
+                if (el) el.classList.add('range-highlight');
+            });
+        }
 
         if (selectedUnit && selectedUnit.owner === 'player') {
             if (selectedUnit.constructionTime > 0) return;
@@ -214,7 +223,13 @@ export class UI {
             }
 
             validMoves.forEach(m => document.querySelector(`.tile[data-index="${m}"]`).classList.add('valid-move'));
-            validAttacks.forEach(i => document.querySelector(`.tile[data-index="${i}"]`).classList.add('valid-attack'));
+            validAttacks.forEach(i => {
+                const el = document.querySelector(`.tile[data-index="${i}"]`);
+                if (el) {
+                    el.classList.add('valid-attack');
+                    el.classList.remove('range-highlight'); // Target overrides range
+                }
+            });
         }
     }
 

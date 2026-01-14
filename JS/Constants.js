@@ -1,4 +1,4 @@
-export const BOARD_SIZE = 10;
+export const DEFAULT_BOARD_SIZE = 15;
 
 // ... (ICONS e TIBERIUM_TYPES rimangono uguali, copiali dal vecchio file) ...
 export const ICONS = {
@@ -11,7 +11,9 @@ export const ICONS = {
     wall: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="5" y="5" width="90" height="90" fill="#475569" stroke="#94a3b8" stroke-width="4" /><path d="M5,35 L95,35 M5,65 L95,65 M35,5 L35,35 M65,35 L65,65 M35,65 L35,95" stroke="#94a3b8" stroke-width="2" /></svg>`,
     pending_wall: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="10" y="10" width="80" height="80" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5,5" /><path d="M20,20 L80,80 M80,20 L20,80" stroke="currentColor" stroke-width="2" /></svg>`,
     transformer: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="25" y="25" width="50" height="50" fill="currentColor" opacity="0.3" rx="10" /><circle cx="50" cy="50" r="20" stroke="currentColor" stroke-width="4" stroke-dasharray="10, 5" /></svg>`,
-    deep_drill: `<svg viewBox="0 0 100 100" class="unit-svg"><path d="M20,80 L80,80 L50,20 Z" fill="currentColor" opacity="0.8"/><path d="M50,20 L50,90" stroke="black" stroke-width="4" stroke-dasharray="5,5"/><rect x="30" y="70" width="40" height="20" fill="currentColor" stroke="black" stroke-width="2"/></svg>`
+    deep_drill: `<svg viewBox="0 0 100 100" class="unit-svg"><path d="M20,80 L80,80 L50,20 Z" fill="currentColor" opacity="0.8"/><path d="M50,20 L50,90" stroke="black" stroke-width="4" stroke-dasharray="5,5"/><rect x="30" y="70" width="40" height="20" fill="currentColor" stroke="black" stroke-width="2"/></svg>`,
+    missile_turret: `<svg viewBox="0 0 100 100" class="unit-svg"><circle cx="50" cy="50" r="35" fill="currentColor" opacity="0.4" stroke="currentColor" stroke-width="2" /><rect x="35" y="35" width="30" height="30" fill="currentColor" /><path d="M50,50 L85,50" stroke="currentColor" stroke-width="8" stroke-linecap="round" /><path d="M85,50 L75,40 M85,50 L75,60" stroke="currentColor" stroke-width="4" /></svg>`,
+    artillery: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="25" y="60" width="50" height="20" fill="currentColor" rx="5" /><circle cx="50" cy="50" r="20" fill="currentColor" opacity="0.6" /><path d="M50,50 L90,30" stroke="currentColor" stroke-width="6" stroke-linecap="round" /></svg>`
 };
 
 export const TIBERIUM_TYPES = {
@@ -21,15 +23,17 @@ export const TIBERIUM_TYPES = {
 
 export const UNIT_TYPES = {
     base: { name: "HQ", hp: 600, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 0, desc: "Main Base" },
-    scout: { name: "Scout", hp: 50, atk: 12, range: 2.5, maxMove: 8, maxAttacks: 2, cost: 50, desc: "Fast, Ranged Skirmisher" },
-    tank: { name: "Titan", hp: 180, atk: 45, range: 1.5, maxMove: 3, maxAttacks: 1, cost: 150, desc: "Heavy Armor, Close Combat" },
+    scout: { name: "Scout", hp: 50, atk: 8, range: 2.5, maxMove: 8, maxAttacks: 2, cost: 50, desc: "Fast, Ranged Skirmisher" },
+    tank: { name: "Titan", hp: 250, atk: 45, range: 2, maxMove: 3, maxAttacks: 1, cost: 150, desc: "Heavy Armor, Close Combat" },
     harvester: { name: "Harvester", hp: 100, atk: 0, range: 0, maxMove: 4, maxAttacks: 0, cost: 100, desc: "Mines Tiberium" },
     builder: { name: "Builder", hp: 60, atk: 0, range: 1.5, maxMove: 4, maxAttacks: 1, cost: 25, desc: "Builds Walls & Turrets" },
-    turret: { name: "Turret", hp: 180, atk: 25, range: 3, maxMove: 0, maxAttacks: 2, cost: 0, desc: "Auto-Defensive Structure" },
+    turret: { name: "Turret", hp: 180, atk: 25, range: 2.5, maxMove: 0, maxAttacks: 2, cost: 30, desc: "Auto-Defensive Structure" },
     wall: { name: "Wall", hp: 180, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 5, desc: "Defensive Barrier" },
     pending_wall: { name: "Site", hp: 50, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 0, desc: "Under Construction" },
     transformer: { name: "Morph", hp: 180, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 0, desc: "Transforming..." },
-    deep_drill: { name: "Deep Drill", hp: 1200, atk: 10, range: 2, maxMove: 0, maxAttacks: 4, cost: 600, desc: "Infinite Mining & Defense" }
+    deep_drill: { name: "Deep Drill", hp: 800, atk: 10, range: 2, maxMove: 0, maxAttacks: 2, cost: 400, desc: "Infinite Mining & Defense" },
+    missile_turret: { name: "Missile Turret", hp: 150, atk: 55, range: 5, minRange: 2, maxMove: 0, maxAttacks: 1, cost: 100, desc: "Long Range Anti-Armor" },
+    artillery: { name: "Artillery", hp: 60, atk: 40, range: 5, maxMove: 3, maxAttacks: 1, cost: 120, desc: "Mobile Long-Range Gun" }
 };
 
 // --- NUOVA SEZIONE AUDIO ---
@@ -41,6 +45,8 @@ export const AUDIO_FILES = {
     select_harvester: 'assets/sounds/select_harvester.mp3',
     select_builder: 'assets/sounds/select_builder.mp3',
     select_turret: 'assets/sounds/select_turret.mp3',
+    select_missile_turret: 'assets/sounds/select_MissileTurret.mp3',
+    select_artillery: 'assets/sounds/select_Artillery.mp3',
     select_deep_drill: 'assets/sounds/select_drill.mp3',
     select_wall: 'assets/sounds/select_wall.mp3',
     select_construction: 'assets/sounds/construction_loop.mp3',
@@ -48,6 +54,7 @@ export const AUDIO_FILES = {
     // Movimento (Loop durante il movimento)
     move_scout: 'assets/sounds/move_scout.mp3',
     move_tank: 'assets/sounds/move_tank.mp3',
+    move_artillery: 'assets/sounds/move_tank.mp3', // Uses Titan sound
     move_harvester: 'assets/sounds/move_harvester.mp3',
     move_builder: 'assets/sounds/move_builder.mp3',
 
@@ -55,6 +62,8 @@ export const AUDIO_FILES = {
     atk_scout: 'assets/sounds/atk_scout.mp3',
     atk_tank: 'assets/sounds/atk_tank.mp3',
     atk_turret: 'assets/sounds/atk_turret.mp3',
+    atk_missile_turret: 'assets/sounds/atk_missile.mp3', // Updated sound
+    atk_artillery: 'assets/sounds/atk_missile.mp3', // Use missile sound as requested by user
     atk_deep_drill: 'assets/sounds/atk_drill.mp3',
     atk_builder: 'assets/sounds/atk_builder.mp3',
 

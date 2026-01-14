@@ -41,6 +41,7 @@
                     <p id="unlock-msg" class="blink-text hidden">READ INFO TO UNLOCK START</p>
                     <div class="btn-group">
                         <button id="btn-info" class="menu-btn disabled" disabled>INFO</button>
+                        <button id="btn-options" class="menu-btn disabled" disabled>OPTIONS</button>
                         <button id="btn-start" class="menu-btn disabled" disabled>START GAME</button>
                     </div>
                 </div>
@@ -97,8 +98,12 @@
 
         <!-- Game Area -->
         <div id="game-container" class="glass-panel z-10">
-            <div id="grid-layer"></div>
-            <div id="unit-layer"></div>
+            <div id="game-viewport" class="w-full h-full overflow-hidden relative">
+                <div id="game-world" class="relative top-0 left-0 origin-top-left">
+                    <div id="grid-layer"></div>
+                    <div id="unit-layer"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Bottom HUD -->
@@ -134,7 +139,7 @@
             <div id="construction-dock" class="glass-panel w-full-panel p-2 flex items-center justify-center">
 
                 <!-- Build Menu (HQ) -->
-                <div id="build-menu" class="hidden grid grid-cols-4 gap-2 w-full">
+                <div id="build-menu" class="hidden grid grid-cols-5 gap-2 w-full">
                     <button onclick="window.game.buildUnit('builder')"
                         class="glass-btn btn-player p-1 rounded flex flex-col items-center border-orange-500/30">
                         <svg class="w-5 h-5 fill-orange-400 mb-1" viewBox="0 0 100 100">
@@ -168,6 +173,16 @@
                         <span class="text-[9px] font-bold text-green-200">HARV</span>
                         <span class="text-[9px] text-green-400">100</span>
                     </button>
+                    <button onclick="window.game.buildUnit('artillery')"
+                        class="glass-btn btn-player p-1 rounded flex flex-col items-center border-red-500/30">
+                        <svg class="w-5 h-5 fill-red-400 mb-1" viewBox="0 0 100 100">
+                            <rect x="25" y="60" width="50" height="20" rx="5" />
+                            <circle cx="50" cy="50" r="20" opacity="0.6" />
+                            <path d="M50,50 L90,30" stroke="currentColor" stroke-width="6" />
+                        </svg>
+                        <span class="text-[9px] font-bold text-red-200">ARTY</span>
+                        <span class="text-[9px] text-green-400">120</span>
+                    </button>
                 </div>
 
                 <!-- Action Menu (Builder: Wall & Turret) -->
@@ -196,6 +211,18 @@
                             <span class="text-[9px] text-green-400">30</span>
                         </div>
                     </button>
+                    <button onclick="window.game.transformBuilder('missile_turret')"
+                        class="glass-btn btn-action p-2 rounded flex items-center justify-center gap-2 border-red-500/50">
+                        <svg class="w-5 h-5 fill-red-500" viewBox="0 0 100 100">
+                            <rect x="35" y="35" width="30" height="30" />
+                            <path d="M50,50 L50,15" stroke="currentColor" stroke-width="8" />
+                            <circle cx="50" cy="50" r="35" stroke="currentColor" stroke-width="2" fill="none" />
+                        </svg>
+                        <div class="flex flex-col leading-none text-left">
+                            <span class="text-[10px] font-bold text-white">MISSILE</span>
+                            <span class="text-[9px] text-green-400">100</span>
+                        </div>
+                    </button>
                 </div>
 
                 <!-- Harvester Menu (Harvester: Deep Drill) -->
@@ -208,7 +235,7 @@
                         </svg>
                         <div class="flex flex-col leading-none text-left">
                             <span class="text-[10px] font-bold text-purple-200">DEEP DRILL</span>
-                            <span class="text-[9px] text-green-400">600</span>
+                            <span class="text-[9px] text-green-400">400</span>
                         </div>
                     </button>
                 </div>
@@ -254,6 +281,45 @@
                     class="glass-btn px-6 py-2 rounded font-bold text-sm text-gray-300 hover:bg-white/10">CANCEL</button>
                 <button id="btn-confirm-exit"
                     class="glass-btn px-6 py-2 rounded font-bold text-sm text-red-400 border-red-500/30 hover:bg-red-500/20">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="modal">
+        <div class="modal-box p-6 bg-slate-900/90 border border-blue-500/50 rounded-lg shadow-2xl w-96 backdrop-blur">
+            <h2 class="text-xl font-bold text-blue-300 mb-4 border-b border-blue-500/30 pb-2">SETTINGS</h2>
+
+            <!-- Map Size -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-gray-400 mb-2">MAP SIZE</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button
+                        class="settings-opt-btn active glass-btn p-2 text-[10px] rounded border border-blue-400/50 bg-blue-500/20"
+                        data-size="15">SMALL (15)</button>
+                    <button class="settings-opt-btn glass-btn p-2 text-[10px] rounded border border-white/10"
+                        data-size="30">MEDIUM (30)</button>
+                    <button class="settings-opt-btn glass-btn p-2 text-[10px] rounded border border-white/10"
+                        data-size="60">LARGE (60)</button>
+                </div>
+            </div>
+
+            <!-- Audio -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-gray-400 mb-2">AUDIO</label>
+                <div class="flex items-center gap-4 mb-2">
+                    <button id="btn-mute"
+                        class="glass-btn p-2 rounded w-24 text-[10px] text-center border border-white/10">MUTE:
+                        OFF</button>
+                    <input type="range" id="vol-slider" min="0" max="1" step="0.1" value="0.5"
+                        class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-gray-700">
+                <button id="btn-close-settings"
+                    class="glass-btn btn-player px-6 py-2 rounded text-blue-200 border border-blue-500/30 hover:bg-blue-500/20 transition">SAVE
+                    & CLOSE</button>
             </div>
         </div>
     </div>

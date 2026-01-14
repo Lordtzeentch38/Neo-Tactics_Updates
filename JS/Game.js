@@ -1,11 +1,12 @@
-import { UNIT_TYPES } from './Constants.js';
+import { UNIT_TYPES, DEFAULT_BOARD_SIZE } from './Constants.js';
 import { Grid } from './Grid.js';
 import { UI } from './UI.js';
-import { AudioManager } from './AudioManager.js'; // <--- IMPORT
+import { AudioManager } from './AudioManager.js';
 
 export class Game {
     constructor() {
-        this.grid = new Grid();
+        this.mapSize = DEFAULT_BOARD_SIZE; // Default Size
+        this.grid = new Grid(this.mapSize);
         this.ui = new UI(this);
         this.audio = new AudioManager();
         this.units = [];
@@ -16,6 +17,10 @@ export class Game {
         this.builderMode = null;
         this.gameOver = false;
         this.isMoving = false;
+
+        // Camera State
+        this.camera = { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 };
+        this.initCamera();
 
         // Start Screen Logic
         this.gameStarted = false;
@@ -32,16 +37,16 @@ export class Game {
             tiberiumMined: 0,
             unitsDestroyed: 0,
             unitsLost: 0,
-            startTime: 0 // Set on start
+            startTime: 0
         };
 
         this.bindScreenEvents();
+        this.bindSettingsEvents();
 
         // START ASSET LOADING
         this.audio.loadAssets((progress) => this.onLoadingProgress(progress))
             .then(() => this.onLoadingComplete());
 
-        // Global Button Click Sound
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (btn && !btn.disabled && !btn.classList.contains('disabled')) {
@@ -49,10 +54,109 @@ export class Game {
             }
         });
 
-        // 1. DISABLE BROWSER CONTEXT MENU GLOBALLY
         document.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
+    }
+
+    initCamera() {
+        const viewport = document.getElementById('game-viewport');
+        const world = document.getElementById('game-world');
+
+        // Zoom (Wheel)
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+            const newZoom = Math.min(Math.max(this.camera.zoom + delta, 0.5), 3);
+            this.camera.zoom = newZoom;
+            this.updateCamera();
+        }, { passive: false });
+
+        // Pan (Drag) - MIDDLE MOUSE ONLY
+        viewport.addEventListener('mousedown', (e) => {
+            if (e.button !== 1) return; // Only Middle Mouse (Wheel Click)
+            e.preventDefault(); // Prevent scroll cursor
+            this.camera.isDragging = true;
+            this.camera.lastX = e.clientX;
+            this.camera.lastY = e.clientY;
+            viewport.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!this.camera.isDragging) return;
+            const dx = e.clientX - this.camera.lastX;
+            const dy = e.clientY - this.camera.lastY;
+
+            this.camera.x += dx;
+            this.camera.y += dy;
+
+            this.camera.lastX = e.clientX;
+            this.camera.lastY = e.clientY;
+
+            this.updateCamera();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (this.camera.isDragging) {
+                this.camera.isDragging = false;
+                viewport.style.cursor = 'default';
+            }
+        });
+    }
+
+    updateCamera() {
+        const world = document.getElementById('game-world');
+        if (world) {
+            world.style.transform = `translate(${this.camera.x}px, ${this.camera.y}px) scale(${this.camera.zoom})`;
+        }
+    }
+
+    resetCamera() {
+        this.camera.x = 0;
+        this.camera.y = 0;
+        this.camera.zoom = 1;
+        this.updateCamera();
+    }
+
+    bindSettingsEvents() {
+        const modal = document.getElementById('modal-settings');
+        const btnOptions = document.getElementById('btn-options');
+        const btnClose = document.getElementById('btn-close-settings');
+        const sizeBtns = document.querySelectorAll('.settings-opt-btn');
+        const volSlider = document.getElementById('vol-slider');
+        const muteBtn = document.getElementById('btn-mute');
+
+        btnOptions.onclick = () => {
+            modal.classList.add('active');
+            // Ensure audio context is ready if user interacts here
+            if (!this.audioUnlocked) {
+                this.audio.initContext();
+                this.audio.playMusic('bgm_menu', 0.4);
+                this.audioUnlocked = true;
+            }
+        };
+
+        btnClose.onclick = () => modal.classList.remove('active');
+
+        sizeBtns.forEach(btn => {
+            btn.onclick = (e) => {
+                sizeBtns.forEach(b => b.classList.remove('active', 'border-blue-400/50', 'bg-blue-500/20'));
+                e.target.classList.add('active', 'border-blue-400/50', 'bg-blue-500/20');
+                this.mapSize = parseInt(e.target.dataset.size);
+            };
+        });
+
+        volSlider.oninput = (e) => {
+            const vol = parseFloat(e.target.value);
+            this.audio.setMusicVolume(vol); // ONLY MUSIC
+        };
+
+        muteBtn.onclick = () => {
+            const isMuted = this.audio.toggleMusicMute(); // ONLY MUSIC
+            muteBtn.innerText = isMuted ? "MUTE: ON" : "MUTE: OFF";
+            muteBtn.classList.toggle('text-red-400', isMuted);
+        };
     }
 
     onLoadingProgress(percent) {
@@ -63,14 +167,11 @@ export class Game {
     }
 
     onLoadingComplete() {
-        // Hide Loading, Enable Info
         const loader = document.getElementById('loading-container');
         const btnInfo = document.getElementById('btn-info');
         const unlockMsg = document.getElementById('unlock-msg');
-
         if (loader) loader.classList.add('hidden');
         if (unlockMsg) unlockMsg.classList.remove('hidden');
-
         if (btnInfo) {
             btnInfo.disabled = false;
             btnInfo.classList.remove('disabled');
@@ -86,70 +187,105 @@ export class Game {
     }
 
     showInfo() {
-        this.contextUnlocked = true; // Use this flag? No, removing old logic.
-
-        // Unlock Audio on first interaction
+        this.contextUnlocked = true;
         if (!this.audioUnlocked) {
             this.audio.initContext();
             this.audio.playMusic('bgm_menu', 0.4);
             this.audioUnlocked = true;
         }
-
         this.screens.cover.classList.add('hidden');
         this.screens.cover.classList.remove('active');
-
         this.screens.info.classList.remove('hidden');
         this.screens.info.classList.add('active');
-
-        // Allow Play
         this.hasReadInfo = true;
         this.enablePlayButton();
     }
 
-
-
-
     showCover() {
         this.screens.info.classList.add('hidden');
         this.screens.info.classList.remove('active');
-
         this.screens.cover.classList.remove('hidden');
         this.screens.cover.classList.add('active');
     }
 
     enablePlayButton() {
-        const btn = document.getElementById('btn-start');
+        const btnStart = document.getElementById('btn-start');
+        const btnOptions = document.getElementById('btn-options'); // Options unlocked with Start
         const msg = document.getElementById('unlock-msg');
-        btn.disabled = false;
-        btn.classList.remove('disabled');
-        btn.classList.add('pulse'); // Pulse effect for Play now
-        msg.style.opacity = '0'; // Hide warning
+
+        btnStart.disabled = false;
+        btnStart.classList.remove('disabled');
+        btnStart.classList.add('pulse');
+
+        btnOptions.disabled = false;
+        btnOptions.classList.remove('disabled');
+        // btnOptions.classList.add('pulse'); // Optional, mainly for start
+
+        msg.style.opacity = '0';
     }
 
     startGame() {
         this.screens.cover.classList.add('hidden');
         this.screens.cover.classList.remove('active');
-
         this.gameStarted = true;
-        this.stats.startTime = Date.now(); // Start timer
-        this.audio.playMusic('bgm_game', 0.2); // Switch to Game BGM
-
-        this.init(); // Start actual game logic
+        this.stats.startTime = Date.now();
+        this.audio.playMusic('bgm_game', 0.2);
+        this.init();
     }
 
     init() {
+        // Re-initialize Grid with selected size
+        this.grid = new Grid(this.mapSize);
+        // Clean UI Grid Style
+        document.documentElement.style.setProperty('--board-size', this.mapSize);
+
         this.grid.generateMap();
         this.spawnStartingUnits();
-        this.ui.renderGrid(this.grid.board);
+        this.ui.renderGrid(this.grid.board); // Grid UI needs to support dynamic columns
         this.ui.syncUnits(this.units);
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
+        this.resetCamera();
     }
 
     spawnStartingUnits() {
+        // Player: Fixed at Top-Left (0) + Scout (1)
         this.addUnit('base', 0, 'player');
         this.addUnit('scout', 1, 'player');
-        this.addUnit('base', 99, 'enemy');
-        this.addUnit('scout', 98, 'enemy');
+
+        // Enemy: Random in South-East Quadrant
+        this.spawnEnemyBase();
+    }
+
+    spawnEnemyBase() {
+        const mSize = this.mapSize;
+        const minX = Math.floor(mSize / 2);
+        const minY = Math.floor(mSize / 2);
+
+        let validSpot = -1;
+        let attempts = 0;
+
+        while (validSpot === -1 && attempts < 100) {
+            const rx = minX + Math.floor(Math.random() * (mSize - minX));
+            const ry = minY + Math.floor(Math.random() * (mSize - minY));
+            const idx = ry * mSize + rx;
+
+            if (this.grid.board[idx].type !== 'obstacle') {
+                validSpot = idx;
+            }
+            attempts++;
+        }
+
+        // Fallback if random fails (corner)
+        if (validSpot === -1) validSpot = mSize * mSize - 1;
+
+        // Spawn Base
+        this.addUnit('base', validSpot, 'enemy');
+
+        // Spawn Scout nearby
+        const scoutIdx = this.findSpawnSpot(validSpot);
+        if (scoutIdx !== -1) {
+            this.addUnit('scout', scoutIdx, 'enemy');
+        }
     }
 
     addUnit(type, index, owner) {
@@ -168,7 +304,7 @@ export class Game {
     }
 
     getUnitAt(i) { return this.units.find(u => u.index == i); }
-    dist(a, b) { return Math.abs((a % 10) - (b % 10)) + Math.abs(Math.floor(a / 10) - Math.floor(b / 10)); }
+    dist(a, b) { return Math.abs((a % this.mapSize) - (b % this.mapSize)) + Math.abs(Math.floor(a / this.mapSize) - Math.floor(b / this.mapSize)); }
     sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     handleTileClick(i) {
@@ -291,11 +427,43 @@ export class Game {
     refreshHighlights() {
         let moves = [];
         let attacks = [];
+        let rangeTiles = [];
+
         if (this.selectedUnit && this.selectedUnit.owner === 'player' && !this.isMoving) {
             moves = this.getValidMoves(this.selectedUnit);
             attacks = this.getValidAttacks(this.selectedUnit);
         }
-        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units);
+
+        // Show range for Turrets (Player or Enemy)
+        if (this.selectedUnit && (this.selectedUnit.type === 'turret' || this.selectedUnit.type === 'deep_drill' || this.selectedUnit.type === 'missile_turret')) {
+            rangeTiles = this.getTilesInRange(this.selectedUnit);
+        }
+
+        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units, rangeTiles);
+    }
+
+    getTilesInRange(unit) {
+        let res = [];
+        const sx = unit.index % this.mapSize;
+        const sy = Math.floor(unit.index / this.mapSize);
+        const r = Math.ceil(unit.range);
+        const minR = unit.minRange || 0; // Support Min Range
+        const mSize = this.mapSize;
+
+        for (let y = -r; y <= r; y++) {
+            for (let x = -r; x <= r; x++) {
+                if (x === 0 && y === 0) continue;
+                const dist = Math.sqrt(x * x + y * y);
+                if (dist <= unit.range && dist >= minR) { // Check Min Range
+                    const tx = sx + x;
+                    const ty = sy + y;
+                    if (tx >= 0 && tx < mSize && ty >= 0 && ty < mSize) {
+                        res.push(ty * mSize + tx);
+                    }
+                }
+            }
+        }
+        return res;
     }
 
     getValidMoves(unit) {
@@ -330,18 +498,19 @@ export class Game {
     getValidAttacks(unit) {
         if (unit.attacksLeft <= 0 || unit.constructionTime > 0) return [];
         let res = [];
-        const sx = unit.index % 10;
-        const sy = Math.floor(unit.index / 10);
+        const sx = unit.index % this.mapSize;
+        const sy = Math.floor(unit.index / this.mapSize);
         const r = Math.ceil(unit.range);
         for (let y = -r; y <= r; y++) {
             for (let x = -r; x <= r; x++) {
                 if (x === 0 && y === 0) continue;
                 const dist = Math.sqrt(x * x + y * y);
-                if (dist <= unit.range) {
+                const minR = unit.minRange || 0;
+                if (dist <= unit.range && dist >= minR) {
                     const tx = sx + x;
                     const ty = sy + y;
-                    if (tx >= 0 && tx < 10 && ty >= 0 && ty < 10) {
-                        const idx = ty * 10 + tx;
+                    if (tx >= 0 && tx < this.mapSize && ty >= 0 && ty < this.mapSize) {
+                        const idx = ty * this.mapSize + tx;
                         const t = this.getUnitAt(idx);
                         if (t && t.owner !== unit.owner) res.push(idx);
                     }
@@ -365,10 +534,10 @@ export class Game {
             const cost = this.grid.getStepCost(unit.index, nextIdx);
             if (unit.currentMove < cost) break;
 
-            const curX = unit.index % 10;
-            const curY = Math.floor(unit.index / 10);
-            const tarX = nextIdx % 10;
-            const tarY = Math.floor(nextIdx / 10);
+            const curX = unit.index % this.mapSize;
+            const curY = Math.floor(unit.index / this.mapSize);
+            const tarX = nextIdx % this.mapSize;
+            const tarY = Math.floor(nextIdx / this.mapSize);
             unit.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
 
             unit.index = nextIdx;
@@ -391,10 +560,10 @@ export class Game {
 
     async combat(atk, def, isAutomated = false) {
         if (!isAutomated) {
-            const curX = atk.index % 10;
-            const curY = Math.floor(atk.index / 10);
-            const tarX = def.index % 10;
-            const tarY = Math.floor(def.index / 10);
+            const curX = atk.index % this.mapSize;
+            const curY = Math.floor(atk.index / this.mapSize);
+            const tarX = def.index % this.mapSize;
+            const tarY = Math.floor(def.index / this.mapSize);
 
             // Force rotation for EVERY unit attacking manually, including turrets
             atk.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
@@ -404,11 +573,11 @@ export class Game {
         // AUDIO: Attack Sound
         this.audio.playOneShot(`atk_${atk.type}`);
 
-        if (atk.range < 2) {
+        if (atk.range <= 2) {
             const atkEl = document.querySelector(`[data-uid="${atk.id}"]`);
             if (atkEl) {
-                const sx = atk.index % 10, sy = Math.floor(atk.index / 10);
-                const tx = def.index % 10, ty = Math.floor(def.index / 10);
+                const sx = atk.index % this.mapSize, sy = Math.floor(atk.index / this.mapSize);
+                const tx = def.index % this.mapSize, ty = Math.floor(def.index / this.mapSize);
                 const dx = (tx - sx) * 25;
                 const dy = (ty - sy) * 25;
                 atkEl.classList.add('unit-lunge');
@@ -481,8 +650,8 @@ export class Game {
             if (enemyAttacker.hp <= 0) break;
             if (this.isTargetInRange(turret, enemyAttacker)) {
                 this.ui.showFloat(turret.index, "RETALIATION!", "#fbbf24");
-                const curX = turret.index % 10; const curY = Math.floor(turret.index / 10);
-                const tarX = enemyAttacker.index % 10; const tarY = Math.floor(enemyAttacker.index / 10);
+                const curX = turret.index % this.mapSize; const curY = Math.floor(turret.index / this.mapSize);
+                const tarX = enemyAttacker.index % this.mapSize; const tarY = Math.floor(enemyAttacker.index / this.mapSize);
                 turret.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
                 this.ui.syncUnits(this.units);
                 await this.sleep(200);
@@ -522,11 +691,11 @@ export class Game {
     }
 
     transformBuilder(targetType = 'turret') {
-        if (this.isMoving) return; // Guard logic
+        if (this.isMoving) return;
         if (!this.selectedUnit || this.selectedUnit.type !== 'builder') return;
 
-        let cost = 30;
-        let time = 2;
+        let cost = UNIT_TYPES[targetType].cost;
+        let time = targetType === 'missile_turret' ? 3 : 2; // Auto-detect time based on type
 
         if (this.resources.player < cost) { this.ui.showFloat(this.selectedUnit.index, `NEED ${cost} RES`, "#ef4444"); return; }
         if (this.selectedUnit.attacksLeft <= 0) { this.ui.showFloat(this.selectedUnit.index, "NO ACTIONS", "#ef4444"); return; }
@@ -550,6 +719,7 @@ export class Game {
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
         this.ui.updateInfo(u, this.grid.board);
         this.ui.toggleMenus(null);
+        this.refreshHighlights();
     }
 
     // --- HARVESTER LOGIC ---
@@ -557,7 +727,7 @@ export class Game {
         if (this.isMoving) return; // Guard logic
         if (!this.selectedUnit || this.selectedUnit.type !== 'harvester') return;
 
-        let cost = 600;
+        let cost = UNIT_TYPES.deep_drill.cost;
         let time = 5;
         let targetType = 'deep_drill';
 
@@ -582,6 +752,7 @@ export class Game {
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
         this.ui.updateInfo(u, this.grid.board);
         this.ui.toggleMenus(null);
+        this.refreshHighlights();
     }
 
     buildUnit(type) {
@@ -607,16 +778,16 @@ export class Game {
     }
 
     findSpawnSpot(baseIdx) {
-        const bx = baseIdx % 10;
-        const by = Math.floor(baseIdx / 10);
+        const bx = baseIdx % this.mapSize;
+        const by = Math.floor(baseIdx / this.mapSize);
         for (let r = 1; r <= 2; r++) {
             for (let y = -r; y <= r; y++) {
                 for (let x = -r; x <= r; x++) {
                     if (x === 0 && y === 0) continue;
                     const tx = bx + x;
                     const ty = by + y;
-                    if (tx >= 0 && tx < 10 && ty >= 0 && ty < 10) {
-                        const idx = ty * 10 + tx;
+                    if (tx >= 0 && tx < this.mapSize && ty >= 0 && ty < this.mapSize) {
+                        const idx = ty * this.mapSize + tx;
                         if (this.grid.board[idx].type !== 'obstacle' && !this.getUnitAt(idx)) {
                             return idx;
                         }
@@ -725,6 +896,7 @@ export class Game {
                         u.name = t.name;
                         u.desc = t.desc;
                         u.range = t.range;
+                        u.minRange = t.minRange || 0; // Copy Min Range
                         u.atk = t.atk;
                         u.maxAttacks = t.maxAttacks;
                         u.attacksLeft = u.maxAttacks;
@@ -747,8 +919,8 @@ export class Game {
             if (this.isTargetInRange(t, movingUnit)) {
                 this.ui.showFloat(t.index, "OVERWATCH!", "#fbbf24");
                 await this.sleep(200);
-                const curX = t.index % 10; const curY = Math.floor(t.index / 10);
-                const tarX = movingUnit.index % 10; const tarY = Math.floor(movingUnit.index / 10);
+                const curX = t.index % this.mapSize; const curY = Math.floor(t.index / this.mapSize);
+                const tarX = movingUnit.index % this.mapSize; const tarY = Math.floor(movingUnit.index / this.mapSize);
                 t.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
                 this.ui.syncUnits(this.units);
 
@@ -774,10 +946,12 @@ export class Game {
     }
 
     isTargetInRange(attacker, target) {
-        const sx = attacker.index % 10; const sy = Math.floor(attacker.index / 10);
-        const tx = target.index % 10; const ty = Math.floor(target.index / 10);
+        const sx = attacker.index % this.mapSize; const sy = Math.floor(attacker.index / this.mapSize);
+        const tx = target.index % this.mapSize; const ty = Math.floor(target.index / this.mapSize);
         const dx = sx - tx; const dy = sy - ty;
-        return Math.sqrt(dx * dx + dy * dy) <= attacker.range;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minR = attacker.minRange || 0;
+        return dist <= attacker.range && dist >= minR;
     }
 
     async runAITurn() {
@@ -814,6 +988,21 @@ export class Game {
                 const nearestPlayer = this.findNearestEnemy(unit.index);
                 if (nearestPlayer) {
                     const d = this.dist(unit.index, nearestPlayer.index);
+                    // AI Logic: Build Missile Turret if rich and enemy is far
+                    if (d >= 4 && this.resources.enemy >= 100 && Math.random() > 0.4) {
+                        this.resources.enemy -= 100;
+                        unit.type = 'transformer';
+                        unit.maxHp = UNIT_TYPES.missile_turret.hp;
+                        unit.hp = unit.maxHp;
+                        unit.maxMove = 0; unit.currentMove = 0; unit.attacksLeft = 0;
+                        unit.constructionTime = 3;
+                        unit.transformTarget = 'missile_turret';
+                        this.ui.showFloat(unit.index, "MISSILE SYS...", "#ef4444");
+                        this.ui.syncUnits(this.units);
+                        await this.sleep(400);
+                        continue;
+                    }
+                    // AI Logic: Standard Turret
                     if (d <= 5 && d >= 2 && this.resources.enemy >= 30) {
                         this.resources.enemy -= 30;
                         unit.type = 'transformer';
