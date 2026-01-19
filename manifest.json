@@ -1,8 +1,8 @@
 {
-    "version": "0.16.2",
+    "version": "0.17.0 LAST",
     "assets": {
-        "index.html": "5cd9499f3d8afca5c54f9218766b0118",
-        "style.css": "6ace548f721484a66a009af6e0d3672c",
+        "index.html": "f9bb6f8667f36a910d3aa8d5bd65fd57",
+        "style.css": "9bec605eb5f8562d214871c4c5430959",
         "assets/images/Neo-Tactics-Cover.png": "814e02a93aab554b96de66606c052f11",
         "assets/images/Neo-Tactics-Defeat.png": "cc9a3e09d403579ee6907b99e79a54eb",
         "assets/images/Neo-Tactics-Victory.png": "69bc24d5ef9a73612e66835206c10681",
@@ -18,6 +18,7 @@
         "assets/images/units/transformer.png": "049f8662822c8f352b090731fa24f45f",
         "assets/images/units/turret.png": "0ecb59a5c55663d5fb627f0bf59a70ee",
         "assets/images/units/wall.png": "f064f1433c78cfbe756fc028c897e3bb",
+        "assets/sounds/atk_artillery.mp3": "2ac36e440b90b068bedc4c412455992d",
         "assets/sounds/atk_builder.mp3": "f2c677a34b4ebb0435736ecaa41f3292",
         "assets/sounds/atk_drill.mp3": "ea6086eccf492194143c85e8aa4748bc",
         "assets/sounds/atk_missile.mp3": "a162546f32d13a7ea4940e0a41025fa7",
@@ -58,10 +59,10 @@
         "assets/sounds/Backup suoni/select_MissileTurret_2.mp3": "1f72d6685406e15f69c790fc7357f18a",
         "assets/sounds/Backup suoni/select_MissileTurret_3.mp3": "e84d9214fec877f9c2c7e40d3cf39a74",
         "JS/AudioManager.js": "db403b0f13c6aff879489d07847faf22",
-        "JS/Constants.js": "9184a8929bc553016d5ef119dafaba5a",
-        "JS/Game.js": "ad1cd96f0dc28a8bcaf7e5c4bf7cef38",
+        "JS/Constants.js": "095cb19df64b9eea1603e929173faafd",
+        "JS/Game.js": "2c1fbbe394c03116f02ee4961a841e29",
         "JS/Grid.js": "f809ebf4c36ef4a5d43492b88b368265",
         "JS/main.js": "b8c9d9a791de7ff0916199dc24a6547e",
-        "JS/UI.js": "352026f2e104bebd2c628e7f89c79baf"
+        "JS/UI.js": "0200944d030f1365924e2437b105c872"
     }
 }

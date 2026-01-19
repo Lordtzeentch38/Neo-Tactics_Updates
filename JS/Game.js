@@ -352,6 +352,19 @@ export class Game {
             }
         }
 
+        // Repair Mode
+        if (this.selectedUnit && this.selectedUnit.type === 'builder' && this.builderMode === 'repair') {
+            const tile = document.querySelector(`.tile[data-index="${i}"]`);
+            if (tile.classList.contains('repair-target-player')) {
+                const target = this.getUnitAt(i);
+                this.executeRepair(target);
+                return;
+            } else {
+                this.builderMode = null;
+                this.refreshHighlights();
+            }
+        }
+
         const u = this.getUnitAt(i);
         const tile = document.querySelector(`.tile[data-index="${i}"]`);
 
@@ -427,6 +440,7 @@ export class Game {
         this.turn = 1;
         this.selectedUnit = null;
         this.builderMode = null;
+        this.isCombat = false;
         this.units = [];
         this.resources = { player: 150, enemy: 150 };
         this.stats = { tiberiumMined: 0, unitsDestroyed: 0, unitsLost: 0, startTime: 0 };
@@ -584,8 +598,58 @@ export class Game {
         this.refreshHighlights();
     }
 
+    async fireProjectile(startIdx, endIdx, type) {
+        return new Promise(resolve => {
+            const world = document.getElementById('game-world');
+            const p = document.createElement('div');
+            p.className = `projectile-missile`;
+
+            // Calculate positions
+            const sx = (startIdx % this.mapSize) * 64 + 32;
+            const sy = Math.floor(startIdx / this.mapSize) * 64 + 32;
+            const ex = (endIdx % this.mapSize) * 64 + 32;
+            const ey = Math.floor(endIdx / this.mapSize) * 64 + 32;
+
+            // Start position
+            p.style.left = `${sx}px`;
+            p.style.top = `${sy}px`;
+
+            // Rotation
+            const angle = Math.atan2(ey - sy, ex - sx) * (180 / Math.PI);
+            p.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+
+            world.appendChild(p);
+
+            // Animate
+            // Duration based on distance? Let's say fixed speed.
+            const dist = Math.sqrt(Math.pow(ex - sx, 2) + Math.pow(ey - sy, 2));
+            const duration = Math.max(300, dist * 5.0); // Slower for visibility
+
+            p.animate([
+                { left: `${sx}px`, top: `${sy}px` },
+                { left: `${ex}px`, top: `${ey}px` }
+            ], {
+                duration: duration,
+                easing: 'linear',
+                fill: 'forwards'
+            }).onfinish = () => {
+                p.remove();
+                resolve();
+            };
+        });
+    }
+
     async combat(atk, def, isAutomated = false) {
+        // PER-UNIT LOCK: Check if unit has actions and consume immediately
+        if (atk.attacksLeft <= 0) return;
+        atk.attacksLeft--;
+
+        // AUDIO: Attack Sound (Trigger IMMEDIATELY)
+        this.audio.playOneShot(`atk_${atk.type}`);
+
         if (!isAutomated) {
+            this.ui.updateInfo(atk, this.grid.board); // Update UI immediately to show consumed ACT
+
             const curX = atk.index % this.mapSize;
             const curY = Math.floor(atk.index / this.mapSize);
             const tarX = def.index % this.mapSize;
@@ -596,14 +660,42 @@ export class Game {
             this.ui.syncUnits(this.units);
         }
 
-        // AUDIO: Attack Sound
-        this.audio.playOneShot(`atk_${atk.type}`);
+        const atkEl = document.querySelector(`[data-uid="${atk.id}"]`);
 
-        if (atk.range <= 2) {
-            const atkEl = document.querySelector(`[data-uid="${atk.id}"]`);
-            if (atkEl) {
-                const sx = atk.index % this.mapSize, sy = Math.floor(atk.index / this.mapSize);
-                const tx = def.index % this.mapSize, ty = Math.floor(def.index / this.mapSize);
+        // Animation Logic
+        if (atkEl) {
+            const sx = atk.index % this.mapSize, sy = Math.floor(atk.index / this.mapSize);
+            const tx = def.index % this.mapSize, ty = Math.floor(def.index / this.mapSize);
+
+            // ARTILLERY RECOIL & MISSILE
+            if (atk.type === 'artillery' || atk.type === 'missile_turret') {
+                if (atk.type === 'artillery') {
+                    // Recoil Logic for Artillery
+                    const dx = (tx - sx) * 8;
+                    const dy = (ty - sy) * 8;
+                    atkEl.classList.add('unit-lunge');
+                    atkEl.style.transform = `translate(${-dx}%, ${-dy}%)`;
+
+                    // Fire projectile (Async - distinct from animation)
+                    const missileFlight = this.fireProjectile(atk.index, def.index, 'missile');
+
+                    // Animation proceeds independently
+                    await this.sleep(150);
+                    atkEl.style.transform = `translate(0, 0)`;
+                    await this.sleep(150);
+                    atkEl.classList.remove('unit-lunge');
+
+                    // Wait for impact
+                    await missileFlight;
+                    this.audio.playOneShot('explode', 0.8);
+                } else {
+                    // Just Fire for Turret (no recoil)
+                    await this.fireProjectile(atk.index, def.index, 'missile');
+                    this.audio.playOneShot('explode', 0.8);
+                }
+            }
+            // MELEE / SHORT RANGE LUNGE
+            else if (atk.range <= 2) {
                 const dx = (tx - sx) * 25;
                 const dy = (ty - sy) * 25;
                 atkEl.classList.add('unit-lunge');
@@ -617,7 +709,7 @@ export class Game {
 
         const dmg = Math.max(1, atk.atk + Math.floor(Math.random() * 4) - 2);
         def.hp -= dmg;
-        atk.attacksLeft--;
+        // atk.attacksLeft--; // REMOVED: Consumed at start
 
         this.ui.showFloat(def.index, `-${dmg}`, '#ef4444');
 
@@ -691,11 +783,48 @@ export class Game {
         if (this.isMoving) return; // Guard logic
         if (!this.selectedUnit || this.selectedUnit.type !== 'builder') return;
         if (this.selectedUnit.attacksLeft <= 0) { this.ui.showFloat(this.selectedUnit.index, "NO ACTIONS", "#ef4444"); return; }
+
         if (mode === 'wall') {
             if (this.resources.player < 5) { this.ui.showFloat(this.selectedUnit.index, "NEED 5 RES", "#ef4444"); return; }
             this.builderMode = 'wall';
-            this.refreshHighlights();
+        } else if (mode === 'repair') {
+            this.builderMode = 'repair';
         }
+        this.refreshHighlights();
+    }
+
+    executeRepair(targetUnit) {
+        if (!targetUnit) return;
+        if (targetUnit.owner !== this.selectedUnit.owner) {
+            this.ui.showFloat(targetUnit.index, "CAN'T REPAIR ENEMY", "#ef4444");
+            return;
+        }
+
+        const repairCost = Math.min(this.resources.player, targetUnit.maxHp - targetUnit.hp);
+
+        if (repairCost <= 0) {
+            this.ui.showFloat(targetUnit.index, "FULL HP", "#10b981");
+            return;
+        }
+
+        // Apply Repair
+        this.resources.player -= repairCost;
+        targetUnit.hp += repairCost;
+
+        // Cost Action? Maybe minimal cost or full action
+        // For now, let's say it consumes action
+        this.selectedUnit.attacksLeft = 0;
+        // this.selectedUnit.currentMove = 0; // ALLOW MOVEMENT after repair
+        this.builderMode = null;
+
+        // Visuals
+        this.ui.showFloat(targetUnit.index, `+${repairCost} HP`, "#00ffff");
+        this.audio.playOneShot('transform', 1.5); // Reuse mechanic sound
+
+        this.ui.syncUnits(this.units);
+        this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
+        this.ui.toggleMenus(this.selectedUnit); // Keep menu open
+        this.refreshHighlights();
     }
 
     executeBuildWall(targetIdx) {
@@ -988,7 +1117,8 @@ export class Game {
             const harvesters = aiUnits.filter(u => u.type === 'harvester').length;
             let buildChoice = null;
             if (harvesters === 0 && this.resources.enemy >= 100) buildChoice = 'harvester';
-            else if (this.resources.enemy >= 150) buildChoice = 'tank';
+            else if (this.resources.enemy >= 150 && Math.random() > 0.5) buildChoice = 'tank';
+            else if (this.resources.enemy >= 120 && Math.random() > 0.6) buildChoice = 'artillery'; // AI Artillery
             else if (this.resources.enemy >= 50 && Math.random() > 0.6) buildChoice = 'scout';
             else if (this.resources.enemy >= 25 && Math.random() > 0.7) buildChoice = 'builder';
 
@@ -1011,6 +1141,30 @@ export class Game {
 
             // --- AI BUILDER LOGIC ---
             if (unit.type === 'builder') {
+                // 1. Check for Repair Targets
+                const neighbors = this.grid.getNeighbors(unit.index);
+                let repaired = false;
+                for (let n of neighbors) {
+                    const target = this.getUnitAt(n);
+                    if (target && target.owner === 'enemy' && target.hp < target.maxHp) {
+                        const repairCost = Math.min(this.resources.enemy, target.maxHp - target.hp);
+                        if (repairCost > 0) {
+                            this.resources.enemy -= repairCost;
+                            target.hp += repairCost;
+                            unit.attacksLeft = 0; // Consume action
+                            this.ui.showFloat(target.index, `+${repairCost} HP`, "#10b981");
+                            this.ui.showFloat(unit.index, "REPAIRING", "#10b981");
+                            this.audio.playOneShot('transform', 1.5);
+                            this.ui.syncUnits(this.units);
+                            this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
+                            await this.sleep(400);
+                            repaired = true;
+                            break;
+                        }
+                    }
+                }
+                if (repaired) continue;
+
                 const nearestPlayer = this.findNearestEnemy(unit.index);
                 if (nearestPlayer) {
                     const d = this.dist(unit.index, nearestPlayer.index);

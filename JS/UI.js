@@ -192,7 +192,7 @@ export class UI {
 
     refreshHighlights(selectedUnit, validMoves, validAttacks, builderMode, board, units, rangeTiles = []) {
         document.querySelectorAll('.tile').forEach(el => {
-            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target', 'range-highlight');
+            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target', 'range-highlight', 'repair-target-player', 'repair-target-enemy');
             const i = parseInt(el.dataset.index);
 
             if (selectedUnit && selectedUnit.index === i) {
@@ -217,6 +217,19 @@ export class UI {
                 neighbors.forEach(n => {
                     if (!units.find(u => u.index === n) && board[n].type !== 'obstacle') {
                         document.querySelector(`.tile[data-index="${n}"]`).classList.add('build-target');
+                    }
+                });
+                return;
+            }
+
+            if (builderMode === 'repair') {
+                const neighbors = this.game.grid.getNeighbors(selectedUnit.index);
+                neighbors.forEach(n => {
+                    const target = units.find(u => u.index === n);
+                    // RESTRICTION: Can only repair own units
+                    if (target && target.hp < target.maxHp && target.owner === selectedUnit.owner) {
+                        const el = document.querySelector(`.tile[data-index="${n}"]`);
+                        el.classList.add('repair-target-player');
                     }
                 });
                 return;
