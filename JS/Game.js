@@ -64,11 +64,30 @@ export class Game {
         const world = document.getElementById('game-world');
 
         // Zoom (Wheel)
+        // Zoom (Wheel) - MOUSE CENTERED
         viewport.addEventListener('wheel', (e) => {
             e.preventDefault();
+
+            // 1. Get Mouse Position relative to Viewport
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 2. Calculate New Zoom
             const zoomSpeed = 0.1;
             const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
             const newZoom = Math.min(Math.max(this.camera.zoom + delta, 0.5), 3);
+
+            // 3. Calculate Scale Ratio
+            // ratio = new / old
+            const scaleRatio = newZoom / this.camera.zoom;
+
+            // 4. Adjust Camera Position (Offset)
+            // Formula: NewOffset = Mouse - (Mouse - OldOffset) * Ratio
+            this.camera.x = mouseX - (mouseX - this.camera.x) * scaleRatio;
+            this.camera.y = mouseY - (mouseY - this.camera.y) * scaleRatio;
+
+            // 5. Apply New Zoom
             this.camera.zoom = newZoom;
             this.updateCamera();
         }, { passive: false });
@@ -113,9 +132,16 @@ export class Game {
     }
 
     resetCamera() {
-        this.camera.x = 0;
-        this.camera.y = 0;
+        const viewport = document.getElementById('game-viewport');
+        const viewportW = viewport ? viewport.clientWidth : window.innerWidth;
+        const boardW = this.mapSize * 64; // 64px TILE_SIZE
+        const offsetX = (viewportW - boardW) / 2;
+
+        this.camera.x = offsetX;
+        this.camera.y = 0; // Top aligned
         this.camera.zoom = 1;
+
+        // Ensure update
         this.updateCamera();
     }
 
@@ -529,43 +555,26 @@ export class Game {
         // AUDIO: Start Move Loop
         this.audio.playMoveLoop(unit.type);
 
-        const mSize = this.mapSize;
-
         for (let i = 1; i < path.length; i++) {
             const nextIdx = path[i];
             const cost = this.grid.getStepCost(unit.index, nextIdx);
-
-            // Logic Check (Cost)
             if (unit.currentMove < cost) break;
 
-            const prevIdx = path[i - 1];
-            // Look ahead/behind for spline control points
-            const p0Idx = i > 1 ? path[i - 2] : prevIdx;
-            const p1Idx = prevIdx;
-            const p2Idx = nextIdx;
-            const p3Idx = i < path.length - 1 ? path[i + 1] : nextIdx;
+            const curX = unit.index % this.mapSize;
+            const curY = Math.floor(unit.index / this.mapSize);
+            const tarX = nextIdx % this.mapSize;
+            const tarY = Math.floor(nextIdx / this.mapSize);
+            unit.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
 
-            // Convert to coordinates
-            const p0 = { x: p0Idx % mSize, y: Math.floor(p0Idx / mSize) };
-            const p1 = { x: p1Idx % mSize, y: Math.floor(p1Idx / mSize) };
-            const p2 = { x: p2Idx % mSize, y: Math.floor(p2Idx / mSize) };
-            const p3 = { x: p3Idx % mSize, y: Math.floor(p3Idx / mSize) };
-
-            // ANIMATE SEGMENT
-            await this.animateSplineSegment(unit, p0, p1, p2, p3);
-
-            // LOGIC UPDATE (After visual arrival)
             unit.index = nextIdx;
             unit.currentMove -= cost;
-
-            // Ensure final sync ensures exact position is snapped
             this.ui.syncUnits(this.units);
             this.ui.updateInfo(unit, this.grid.board);
 
-            // Check overwatch
+            // Check overwatch for everyone (Player moves -> Enemy shoots; Enemy moves -> Player shoots)
             const killed = await this.checkOverwatch(unit);
             if (killed) break;
-            // Removed sleep, animation provides delay
+            await this.sleep(200);
         }
 
         // AUDIO: Stop Move Loop
@@ -573,66 +582,6 @@ export class Game {
 
         this.isMoving = false;
         this.refreshHighlights();
-    }
-
-    async animateSplineSegment(unit, p0, p1, p2, p3) {
-        return new Promise(resolve => {
-            const duration = 250; // ms per tile
-            const startTime = performance.now();
-            const unitEl = document.querySelector(`[data-uid="${unit.id}"]`);
-
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                let t = elapsed / duration;
-                if (t > 1) t = 1;
-
-                // Catmull-Rom Spline
-                const pos = this.getSplinePoint(p0, p1, p2, p3, t);
-
-                // Calculate Rotation (Tangent)
-                // We use a small delta to look ahead for rotation
-                const lookAheadT = Math.min(t + 0.05, 1);
-                const nextPos = this.getSplinePoint(p0, p1, p2, p3, lookAheadT);
-
-                // Avoid rotation jitter at end
-                if (t < 1) {
-                    const angle = Math.atan2(nextPos.y - pos.y, nextPos.x - pos.x) * (180 / Math.PI);
-                    unit.rotation = angle;
-                }
-
-                // Update Unit Visually
-                // Note: We bypassed ui.syncUnits for performance during animation
-                if (unitEl) {
-                    unitEl.style.left = `${pos.x * 64}px`;
-                    unitEl.style.top = `${pos.y * 64}px`;
-                    // Inner rotation
-                    const inner = unitEl.querySelector('.unit-inner');
-                    if (inner) inner.style.transform = `rotate(${unit.rotation}deg)`;
-                }
-
-                if (t < 1) {
-                    requestAnimationFrame(animate);
-                } else {
-                    resolve();
-                }
-            };
-            requestAnimationFrame(animate);
-        });
-    }
-
-    getSplinePoint(p0, p1, p2, p3, t) {
-        const t2 = t * t;
-        const t3 = t2 * t;
-
-        const f1 = -0.5 * t3 + t2 - 0.5 * t;
-        const f2 = 1.5 * t3 - 2.5 * t2 + 1.0;
-        const f3 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
-        const f4 = 0.5 * t3 - 0.5 * t2;
-
-        const x = p0.x * f1 + p1.x * f2 + p2.x * f3 + p3.x * f4;
-        const y = p0.y * f1 + p1.y * f2 + p2.y * f3 + p3.y * f4;
-
-        return { x, y };
     }
 
     async combat(atk, def, isAutomated = false) {

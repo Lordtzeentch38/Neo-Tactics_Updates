@@ -1,5 +1,5 @@
 {
-    "version": "0.16.1 - Spline Movements",
+    "version": "0.16.2",
     "assets": {
         "index.html": "5cd9499f3d8afca5c54f9218766b0118",
         "style.css": "6ace548f721484a66a009af6e0d3672c",
@@ -59,7 +59,7 @@
         "assets/sounds/Backup suoni/select_MissileTurret_3.mp3": "e84d9214fec877f9c2c7e40d3cf39a74",
         "JS/AudioManager.js": "db403b0f13c6aff879489d07847faf22",
         "JS/Constants.js": "9184a8929bc553016d5ef119dafaba5a",
-        "JS/Game.js": "21bb7ae450ebdd07350fd0f11e9abab2",
+        "JS/Game.js": "ad1cd96f0dc28a8bcaf7e5c4bf7cef38",
         "JS/Grid.js": "f809ebf4c36ef4a5d43492b88b368265",
         "JS/main.js": "b8c9d9a791de7ff0916199dc24a6547e",
         "JS/UI.js": "352026f2e104bebd2c628e7f89c79baf"
