@@ -1,7 +1,8 @@
 {
-    "version": "0.17.0 LAST",
+    "version": "0.17.0 - Cit. (Sun Tzu) \"Rapido come il vento, immobile come la montagna.\"",
     "assets": {
-        "index.html": "f9bb6f8667f36a910d3aa8d5bd65fd57",
+        "index.html": "544cc9627b7a86b90ab1bc1b7dd9c84f",
+        "Neo_Tactics_Web.code-workspace": "3f73540e66da7569826533b40ca807e4",
         "style.css": "9bec605eb5f8562d214871c4c5430959",
         "assets/images/Neo-Tactics-Cover.png": "814e02a93aab554b96de66606c052f11",
         "assets/images/Neo-Tactics-Defeat.png": "cc9a3e09d403579ee6907b99e79a54eb",
