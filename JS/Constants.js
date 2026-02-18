@@ -62,7 +62,7 @@ export const AUDIO_FILES = {
     atk_scout: 'assets/sounds/atk_scout.mp3',
     atk_tank: 'assets/sounds/atk_tank.mp3',
     atk_turret: 'assets/sounds/atk_turret.mp3',
-    atk_missile_turret: 'assets/sounds/atk_missile.mp3',
+    atk_missile_turret: 'assets/sounds/atk_artillery.mp3', // Updated to match Artillery
     atk_artillery: 'assets/sounds/atk_artillery.mp3',
     atk_deep_drill: 'assets/sounds/atk_drill.mp3',
     atk_builder: 'assets/sounds/atk_builder.mp3',
