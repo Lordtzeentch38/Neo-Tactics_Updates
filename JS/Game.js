@@ -330,7 +330,11 @@ export class Game {
     }
 
     getUnitAt(i) { return this.units.find(u => u.index == i); }
-    dist(a, b) { return Math.abs((a % this.mapSize) - (b % this.mapSize)) + Math.abs(Math.floor(a / this.mapSize) - Math.floor(b / this.mapSize)); }
+    dist(a, b) {
+        const dx = (a % this.mapSize) - (b % this.mapSize);
+        const dy = Math.floor(a / this.mapSize) - Math.floor(b / this.mapSize);
+        return Math.sqrt(dx * dx + dy * dy);
+    }
     sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
     handleTileClick(i) {
