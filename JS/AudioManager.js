@@ -14,7 +14,7 @@ export class AudioManager {
 
         // Separate Gain Nodes
         this.musicGain = this.ctx.createGain();
-        this.musicGain.gain.value = 0.2; // Default Music Volume
+        this.musicGain.gain.value = 0.5; // Default Music Volume (Matches Slider)
         this.musicGain.connect(this.ctx.destination);
 
         this.sfxGain = this.ctx.createGain();
@@ -133,22 +133,10 @@ export class AudioManager {
         }
     }
 
-    playMusic(key, volume = 0.2) {
+    playMusic(key, volume = 0.5) {
         this.stopMusic();
         if (this.buffers[key]) {
-            // Volume is overridden by MusicGain, but individual track volume can still adjust relative mix
-            // However, for simplicity, let's just use the musicGain for main control.
-            // We pass 1.0 here so source->gain(1.0)->musicGain(controlled by slider)
-            // Or we can pass the specific volume if we want track-specific leveling.
-            this.activeSources.music = this.createLoopSource(key, 1.0, this.musicGain);
-        }
-        // Apply immediate volume set if needed, but setMusicVolume handles the gain node.
-        if (!this.isMusicMuted) {
-            // If we passed volume to createLoopSource, it's a local gain. 
-            // The global volume is on musicGain.
-            // If the user called playMusic with a specific volume, they might expect that track to be quieter.
-            // But the request says "volume slider... only inherent to music".
-            // So relying on musicGain is correct.
+            this.activeSources.music = this.createLoopSource(key, volume, this.musicGain);
         }
     }
 
