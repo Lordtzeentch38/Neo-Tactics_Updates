@@ -74,5 +74,6 @@ export const AUDIO_FILES = {
     btn_click: 'assets/sounds/Button_Click.mp3',
     btn_end_turn: 'assets/sounds/Button_End-Turn.mp3', // NEW
     transform: 'assets/sounds/transform.mp3',
-    explode: 'assets/sounds/explode.mp3'
+    explode: 'assets/sounds/explode.mp3',
+    explode_wall: 'assets/sounds/Aggiuntivi/small-rock-break-194553.mp3'
 };

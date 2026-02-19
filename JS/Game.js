@@ -725,7 +725,11 @@ export class Game {
 
         if (def.hp <= 0) {
             // AUDIO: Explosion
-            this.audio.playOneShot('explode');
+            if (def.type === 'wall') {
+                this.audio.playOneShot('explode_wall');
+            } else {
+                this.audio.playOneShot('explode');
+            }
 
             if (def.owner === 'enemy') this.stats.unitsDestroyed++; // STATS
             if (def.owner === 'player') this.stats.unitsLost++;     // STATS
