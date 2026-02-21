@@ -13,7 +13,12 @@ export const ICONS = {
     transformer: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="25" y="25" width="50" height="50" fill="currentColor" opacity="0.3" rx="10" /><circle cx="50" cy="50" r="20" stroke="currentColor" stroke-width="4" stroke-dasharray="10, 5" /></svg>`,
     deep_drill: `<svg viewBox="0 0 100 100" class="unit-svg"><path d="M20,80 L80,80 L50,20 Z" fill="currentColor" opacity="0.8"/><path d="M50,20 L50,90" stroke="black" stroke-width="4" stroke-dasharray="5,5"/><rect x="30" y="70" width="40" height="20" fill="currentColor" stroke="black" stroke-width="2"/></svg>`,
     missile_turret: `<svg viewBox="0 0 100 100" class="unit-svg"><circle cx="50" cy="50" r="35" fill="currentColor" opacity="0.4" stroke="currentColor" stroke-width="2" /><rect x="35" y="35" width="30" height="30" fill="currentColor" /><path d="M50,50 L85,50" stroke="currentColor" stroke-width="8" stroke-linecap="round" /><path d="M85,50 L75,40 M85,50 L75,60" stroke="currentColor" stroke-width="4" /></svg>`,
-    artillery: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="5" y="10" width="90" height="20" rx="5" fill="currentColor" opacity="0.7"/><rect x="5" y="70" width="90" height="20" rx="5" fill="currentColor" opacity="0.7"/><rect x="15" y="25" width="70" height="50" fill="currentColor"/><rect x="10" y="35" width="85" height="30" rx="10" fill="currentColor" stroke="black" stroke-width="2"/><rect x="70" y="35" width="5" height="30" fill="black" opacity="0.5"/><path d="M10,35 L0,25" stroke="currentColor" stroke-width="4"/><path d="M10,65 L0,75" stroke="currentColor" stroke-width="4"/></svg>`
+    artillery: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="5" y="10" width="90" height="20" rx="5" fill="currentColor" opacity="0.7"/><rect x="5" y="70" width="90" height="20" rx="5" fill="currentColor" opacity="0.7"/><rect x="15" y="25" width="70" height="50" fill="currentColor"/><rect x="10" y="35" width="85" height="30" rx="10" fill="currentColor" stroke="black" stroke-width="2"/><rect x="70" y="35" width="5" height="30" fill="black" opacity="0.5"/><path d="M10,35 L0,25" stroke="currentColor" stroke-width="4"/><path d="M10,65 L0,75" stroke="currentColor" stroke-width="4"/></svg>`,
+    barracks: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="10" y="20" width="80" height="60" fill="currentColor" opacity="0.3"/><rect x="15" y="25" width="70" height="50" fill="currentColor" opacity="0.8"/><rect x="25" y="35" width="50" height="30" fill="#1e293b"/><path d="M30,50 L70,50 M50,35 L50,65" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="8" fill="red" opacity="0.8"/></svg>`,
+    drone_factory: `<svg viewBox="0 0 100 100" class="unit-svg"><rect x="10" y="10" width="80" height="80" rx="40" fill="currentColor" opacity="0.3"/><polygon points="50,20 80,80 20,80" fill="currentColor" opacity="0.8"/><circle cx="50" cy="60" r="15" fill="#1e293b"/><circle cx="50" cy="60" r="5" fill="#3b82f6" class="animate-pulse"/></svg>`,
+    humanoid_soldier: `<svg viewBox="0 0 100 100" class="unit-svg"><circle cx="50" cy="35" r="15" fill="currentColor"/><rect x="35" y="55" width="30" height="35" rx="5" fill="currentColor"/><rect x="25" y="55" width="10" height="25" rx="5" fill="currentColor"/><rect x="65" y="55" width="35" height="8" rx="4" fill="#334155"/><rect x="90" y="53" width="10" height="12" fill="currentColor"/></svg>`,
+    kamikaze_drone_ground: `<svg viewBox="0 0 100 100" class="unit-svg"><circle cx="50" cy="50" r="30" fill="currentColor"/><circle cx="50" cy="50" r="15" fill="#ef4444" class="animate-ping"/><path d="M20,50 L5,50 M80,50 L95,50 M50,20 L50,5 M50,80 L50,95" stroke="currentColor" stroke-width="8"/></svg>`,
+    kamikaze_drone_air: `<svg viewBox="0 0 100 100" class="unit-svg"><path d="M50,10 L90,50 L50,90 L10,50 Z" fill="currentColor" opacity="0.9"/><circle cx="50" cy="50" r="15" fill="#ef4444" class="animate-pulse"/><path d="M50,25 L50,75 M25,50 L75,50" stroke="#1e293b" stroke-width="4"/><circle cx="20" cy="50" r="5" fill="#334155"/><circle cx="80" cy="50" r="5" fill="#334155"/></svg>`
 };
 
 export const TIBERIUM_TYPES = {
@@ -33,7 +38,12 @@ export const UNIT_TYPES = {
     transformer: { name: "Morph", hp: 180, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 0, desc: "Transforming..." },
     deep_drill: { name: "Deep Drill", hp: 800, atk: 10, range: 2, maxMove: 0, maxAttacks: 2, cost: 400, desc: "Infinite Mining & Defense" },
     missile_turret: { name: "Missile Turret", hp: 150, atk: 55, range: 5, minRange: 2, maxMove: 0, maxAttacks: 1, cost: 100, desc: "Long Range Anti-Armor" },
-    artillery: { name: "Artillery", hp: 60, atk: 40, range: 5, maxMove: 3, maxAttacks: 1, cost: 120, desc: "Mobile Long-Range Gun" }
+    artillery: { name: "Artillery", hp: 60, atk: 40, range: 5, maxMove: 3, maxAttacks: 1, cost: 120, desc: "Mobile Long-Range Gun" },
+    barracks: { name: "Caserma", hp: 450, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 200, desc: "Produces Infantry", size: 2 },
+    drone_factory: { name: "Drone Factory", hp: 350, atk: 0, range: 0, maxMove: 0, maxAttacks: 0, cost: 250, desc: "Produces Drones", size: 2 },
+    humanoid_soldier: { name: "Soldier", hp: 80, atk: 20, range: 2, maxMove: 5, maxAttacks: 1, cost: 40, desc: "Versatile Infantry" },
+    kamikaze_drone_ground: { name: "Kamikaze (G)", hp: 40, atk: 100, range: 1, maxMove: 6, maxAttacks: 1, cost: 80, desc: "Explosive Ground Drone (AoE)" },
+    kamikaze_drone_air: { name: "Kamikaze (A)", hp: 30, atk: 120, range: 1, maxMove: 7, maxAttacks: 1, cost: 100, desc: "Explosive Air Drone (AoE)" }
 };
 
 // --- NUOVA SEZIONE AUDIO ---
@@ -49,7 +59,12 @@ export const AUDIO_FILES = {
     select_artillery: 'assets/sounds/select_Artillery.mp3',
     select_deep_drill: 'assets/sounds/select_drill.mp3',
     select_wall: 'assets/sounds/select_wall.mp3',
+    select_barracks: 'assets/sounds/construction_loop.mp3',
+    select_drone_factory: 'assets/sounds/construction_loop.mp3',
     select_construction: 'assets/sounds/construction_loop.mp3',
+    select_humanoid_soldier: 'assets/sounds/select_scout.mp3', // Fallback
+    select_kamikaze_drone_ground: 'assets/sounds/select_scout.mp3', // Fallback
+    select_kamikaze_drone_air: 'assets/sounds/select_scout.mp3', // Fallback
 
     // Movimento (Loop durante il movimento)
     move_scout: 'assets/sounds/move_scout.mp3',
@@ -57,6 +72,9 @@ export const AUDIO_FILES = {
     move_artillery: 'assets/sounds/move_tank.mp3', // Uses Titan sound
     move_harvester: 'assets/sounds/move_harvester.mp3',
     move_builder: 'assets/sounds/move_builder.mp3',
+    move_humanoid_soldier: 'assets/sounds/move_scout.mp3', // Fallback
+    move_kamikaze_drone_ground: 'assets/sounds/move_scout.mp3', // Fallback
+    move_kamikaze_drone_air: 'assets/sounds/move_scout.mp3', // Fallback
 
     // Combattimento (One Shot)
     atk_scout: 'assets/sounds/atk_scout.mp3',

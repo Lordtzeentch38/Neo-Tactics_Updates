@@ -67,7 +67,7 @@ export class Grid {
         return neighbors;
     }
 
-    findPath(startIdx, endIdx, units) {
+    findPath(startIdx, endIdx, units, isFlying = false) {
         let dist = {};
         let prev = {};
         let queue = [{ idx: startIdx, cost: 0 }];
@@ -82,7 +82,7 @@ export class Grid {
 
             const neighbors = this.getNeighbors(u.idx);
             for (let v of neighbors) {
-                if (this.board[v].type === 'obstacle') continue;
+                if (!isFlying && this.board[v].type === 'obstacle') continue;
                 // Check if unit exists at v (and is not the target)
                 const unitAtV = units.find(unit => unit.index === v);
                 if (unitAtV && v !== endIdx) continue;

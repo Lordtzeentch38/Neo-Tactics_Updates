@@ -1,9 +1,9 @@
 {
-    "version": "0.17.1 - CodeName: Echoes of Distance",
+    "version": "1.8.0 Humans & Drones",
     "assets": {
-        "index.html": "c5c00f61135cca11f8decb7524f59e53",
+        "index.html": "6c425bca04c4cf6eebeacb3fb4915240",
         "Neo_Tactics_Web.code-workspace": "3f73540e66da7569826533b40ca807e4",
-        "style.css": "9bec605eb5f8562d214871c4c5430959",
+        "style.css": "a9907327194e3f002d20bba1439a6d8b",
         "assets/images/Neo-Tactics-Cover.png": "814e02a93aab554b96de66606c052f11",
         "assets/images/Neo-Tactics-Defeat.png": "cc9a3e09d403579ee6907b99e79a54eb",
         "assets/images/Neo-Tactics-Victory.png": "69bc24d5ef9a73612e66835206c10681",
@@ -60,10 +60,10 @@
         "assets/sounds/Backup suoni/select_MissileTurret_2.mp3": "1f72d6685406e15f69c790fc7357f18a",
         "assets/sounds/Backup suoni/select_MissileTurret_3.mp3": "e84d9214fec877f9c2c7e40d3cf39a74",
         "JS/AudioManager.js": "3083910f2503f075aadb01cec113aeaf",
-        "JS/Constants.js": "e72ba39aafe01533bf831b557775082e",
-        "JS/Game.js": "9dc8d8ef7bcf709f5f23f3321ec58a5a",
-        "JS/Grid.js": "f809ebf4c36ef4a5d43492b88b368265",
+        "JS/Constants.js": "13db92defb1140a74b8c904ba86c9e3f",
+        "JS/Game.js": "586596032da37371958e485e8368264f",
+        "JS/Grid.js": "d17e2c56bde0be37e9fff43c26edd3eb",
         "JS/main.js": "b8c9d9a791de7ff0916199dc24a6547e",
-        "JS/UI.js": "0200944d030f1365924e2437b105c872"
+        "JS/UI.js": "3f2eb1ba933ff5e570018116de2cc643"
     }
 }

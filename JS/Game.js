@@ -17,6 +17,7 @@ export class Game {
         this.builderMode = null;
         this.gameOver = false;
         this.isMoving = false;
+        this.currentAreaPreview = null;
 
         // Camera State
         this.camera = { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 };
@@ -314,7 +315,7 @@ export class Game {
         }
     }
 
-    addUnit(type, index, owner) {
+    addUnit(type, index, owner, occupiedIndices = []) {
         const t = UNIT_TYPES[type];
         const u = {
             id: Math.random().toString(36).substr(2),
@@ -323,13 +324,14 @@ export class Game {
             attacksLeft: t.maxAttacks,
             rotation: owner === 'player' ? 0 : 180,
             constructionTime: 0,
-            transformTarget: null
+            transformTarget: null,
+            occupiedIndices: occupiedIndices
         };
         this.units.push(u);
         return u;
     }
 
-    getUnitAt(i) { return this.units.find(u => u.index == i); }
+    getUnitAt(i) { return this.units.find(u => u.index == i || (u.occupiedIndices && u.occupiedIndices.includes(i))); }
     dist(a, b) {
         const dx = (a % this.mapSize) - (b % this.mapSize);
         const dy = Math.floor(a / this.mapSize) - Math.floor(b / this.mapSize);
@@ -343,6 +345,18 @@ export class Game {
 
         // Check is game started
         if (!this.gameStarted || !this.playerTurn || this.gameOver || this.isMoving) return;
+
+        // Factory Selection
+        if (this.selectedUnit && this.builderMode === 'factory_selection') {
+            if (this.currentAreaPreview && this.isValidArea(this.currentAreaPreview, this.selectedUnit.index)) {
+                this.executeTransformFactory(this.currentAreaPreview, this.factoryTargetType);
+                return;
+            } else {
+                this.builderMode = null;
+                this.currentAreaPreview = null;
+                this.refreshHighlights();
+            }
+        }
 
         // Builder Mode
         if (this.selectedUnit && this.selectedUnit.type === 'builder' && this.builderMode === 'wall') {
@@ -379,9 +393,15 @@ export class Game {
         }
 
         // Move
-        if (this.selectedUnit && this.selectedUnit.owner === 'player' && !u && tile.classList.contains('valid-move')) {
-            this.moveUnit(this.selectedUnit, i);
-            return;
+        if (this.selectedUnit && this.selectedUnit.owner === 'player' && tile.classList.contains('valid-move')) {
+            const isKamikaze = (this.selectedUnit.type === 'kamikaze_drone_ground' || this.selectedUnit.type === 'kamikaze_drone_air');
+            if (u && u.owner !== 'player' && isKamikaze) {
+                this.moveAndExplode(this.selectedUnit, i, u);
+                return;
+            } else if (!u) {
+                this.moveUnit(this.selectedUnit, i);
+                return;
+            }
         }
 
         // Select
@@ -426,6 +446,65 @@ export class Game {
         const u = this.getUnitAt(index);
         console.log('Right Click at', index, 'Unit found:', u);
         this.ui.showContextMenu(event.clientX, event.clientY, u);
+    }
+
+    handleTileMouseEnter(i) {
+        if (!this.gameStarted || !this.playerTurn || this.gameOver || this.isMoving) return;
+
+        if (this.builderMode === 'factory_selection' && this.selectedUnit) {
+            const areas = this.getPossible2x2Areas(this.selectedUnit.index);
+            let bestArea = null;
+            let minDist = Infinity;
+            const mx = i % this.mapSize;
+            const my = Math.floor(i / this.mapSize);
+
+            areas.forEach(area => {
+                const tx = (area[0] % this.mapSize) + 0.5;
+                const ty = Math.floor(area[0] / this.mapSize) + 0.5;
+                const d = Math.sqrt((mx - tx) ** 2 + (my - ty) ** 2);
+                if (d < minDist) {
+                    minDist = d;
+                    bestArea = area;
+                }
+            });
+            this.currentAreaPreview = bestArea;
+            this.refreshHighlights();
+        }
+    }
+
+    getPossible2x2Areas(builderIdx) {
+        const x = builderIdx % this.mapSize;
+        const y = Math.floor(builderIdx / this.mapSize);
+        const areas = [];
+        const candidates = [
+            { cx: x, cy: y },
+            { cx: x - 1, cy: y },
+            { cx: x, cy: y - 1 },
+            { cx: x - 1, cy: y - 1 }
+        ];
+
+        candidates.forEach(c => {
+            if (c.cx >= 0 && c.cx < this.mapSize - 1 && c.cy >= 0 && c.cy < this.mapSize - 1) {
+                const indices = [
+                    c.cy * this.mapSize + c.cx,
+                    c.cy * this.mapSize + (c.cx + 1),
+                    (c.cy + 1) * this.mapSize + c.cx,
+                    (c.cy + 1) * this.mapSize + (c.cx + 1)
+                ];
+                areas.push(indices);
+            }
+        });
+        return areas;
+    }
+
+    isValidArea(indices, builderIdx) {
+        const builder = this.units.find(u => u.index === builderIdx);
+        return indices.every(idx => {
+            const u = this.getUnitAt(idx);
+            if (u && u !== builder) return false;
+            if (this.grid.board[idx].type === 'obstacle' || this.grid.board[idx].type === 'tiberium') return false;
+            return true;
+        });
     }
 
     requestAbandonSession() {
@@ -483,7 +562,15 @@ export class Game {
             rangeTiles = this.getTilesInRange(this.selectedUnit);
         }
 
-        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units, rangeTiles);
+        let areaPreview = null;
+        if (this.builderMode === 'factory_selection' && this.currentAreaPreview) {
+            areaPreview = {
+                indices: this.currentAreaPreview,
+                valid: this.isValidArea(this.currentAreaPreview, this.selectedUnit.index)
+            };
+        }
+
+        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units, rangeTiles, areaPreview);
     }
 
     getTilesInRange(unit) {
@@ -512,8 +599,39 @@ export class Game {
 
     getValidMoves(unit) {
         if (unit.currentMove <= 0) return [];
-        let dist = {};
+
+        const isFlying = (unit.type === 'kamikaze_drone_air');
         let validMoves = [];
+
+        if (isFlying) {
+            // Flying units move in a straight-line radius (line of sight), ignoring step cost
+            const sx = unit.index % this.mapSize;
+            const sy = Math.floor(unit.index / this.mapSize);
+            const r = Math.floor(unit.currentMove);
+
+            for (let y = -r; y <= r; y++) {
+                for (let x = -r; x <= r; x++) {
+                    if (x === 0 && y === 0) continue;
+
+                    const dist = Math.sqrt(x * x + y * y);
+                    if (dist <= unit.currentMove) {
+                        const tx = sx + x;
+                        const ty = sy + y;
+                        if (tx >= 0 && tx < this.mapSize && ty >= 0 && ty < this.mapSize) {
+                            const idx = ty * this.mapSize + tx;
+                            const occupant = this.getUnitAt(idx);
+                            // Can't land on another unit unless it's an enemy
+                            if (!occupant || (occupant.owner !== unit.owner && this.canTarget(unit, occupant))) {
+                                validMoves.push(idx);
+                            }
+                        }
+                    }
+                }
+            }
+            return validMoves;
+        }
+
+        let dist = {};
         let queue = [{ idx: unit.index, cost: 0 }];
         dist[unit.index] = 0;
 
@@ -524,13 +642,21 @@ export class Game {
             const neighbors = this.grid.getNeighbors(u.idx);
             for (let v of neighbors) {
                 if (this.grid.board[v].type === 'obstacle') continue;
-                if (this.getUnitAt(v)) continue;
+
+                // Still can't move onto a tile occupied by another unit, except kamikaze onto enemy
+                const occupant = this.getUnitAt(v);
+                const isKamikaze = (unit.type === 'kamikaze_drone_ground');
+                const isEnemyOccupant = occupant && occupant.owner !== unit.owner && this.canTarget(unit, occupant);
+
+                if (occupant && (!isKamikaze || !isEnemyOccupant)) continue;
+
                 const stepCost = this.grid.getStepCost(u.idx, v);
                 const newCost = u.cost + stepCost;
                 if (newCost <= unit.currentMove) {
                     if (dist[v] === undefined || newCost < dist[v]) {
                         dist[v] = newCost;
-                        queue.push({ idx: v, cost: newCost });
+                        // if we reach an enemy, stop pathfinding *through* them
+                        if (!isEnemyOccupant) queue.push({ idx: v, cost: newCost });
                         if (!validMoves.includes(v)) validMoves.push(v);
                     }
                 }
@@ -556,7 +682,7 @@ export class Game {
                     if (tx >= 0 && tx < this.mapSize && ty >= 0 && ty < this.mapSize) {
                         const idx = ty * this.mapSize + tx;
                         const t = this.getUnitAt(idx);
-                        if (t && t.owner !== unit.owner) res.push(idx);
+                        if (t && t.owner !== unit.owner && this.canTarget(unit, t)) res.push(idx);
                     }
                 }
             }
@@ -565,10 +691,44 @@ export class Game {
     }
 
     async moveUnit(unit, targetIdx) {
-        const path = this.grid.findPath(unit.index, targetIdx, this.units);
+        const isFlying = (unit.type === 'kamikaze_drone_air');
+
+        if (isFlying) {
+            // Straight-line movement for flying units
+            this.isMoving = true;
+            this.audio.playMoveLoop(unit.type);
+
+            const curX = unit.index % this.mapSize;
+            const curY = Math.floor(unit.index / this.mapSize);
+            const tarX = targetIdx % this.mapSize;
+            const tarY = Math.floor(targetIdx / this.mapSize);
+
+            unit.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
+
+            const dist = Math.sqrt(Math.pow(tarX - curX, 2) + Math.pow(tarY - curY, 2));
+
+            // Consume movement
+            unit.currentMove -= dist;
+            unit.index = targetIdx;
+
+            this.ui.syncUnits(this.units);
+            this.ui.updateInfo(unit, this.grid.board);
+
+            // Flying units move fast, maybe 1 overwatch check at end or simulate path overwatch
+            // For simplicity, we just do one overwatch check at destination
+            await this.sleep(400); // Visual travel time delay
+            await this.checkOverwatch(unit);
+
+            this.audio.stopMoveLoop();
+            this.isMoving = false;
+            this.refreshHighlights();
+            return;
+        }
+
+        // Standard ground unit pathfinding movement
+        const path = this.grid.findPath(unit.index, targetIdx, this.units, false);
         if (!path || path.length < 2) return;
         this.isMoving = true;
-        // this.ui.toggleMenus(null); // REMOVED: Keep menu open during move
 
         // AUDIO: Start Move Loop
         this.audio.playMoveLoop(unit.type);
@@ -589,7 +749,7 @@ export class Game {
             this.ui.syncUnits(this.units);
             this.ui.updateInfo(unit, this.grid.board);
 
-            // Check overwatch for everyone (Player moves -> Enemy shoots; Enemy moves -> Player shoots)
+            // Check overwatch for everyone
             const killed = await this.checkOverwatch(unit);
             if (killed) break;
             await this.sleep(200);
@@ -600,6 +760,64 @@ export class Game {
 
         this.isMoving = false;
         this.refreshHighlights();
+    }
+
+    async moveAndExplode(unit, targetIdx, targetUnit) {
+        this.isMoving = true;
+        this.audio.playMoveLoop(unit.type);
+        this.ui.toggleMenus(null);
+
+        const isFlying = (unit.type === 'kamikaze_drone_air');
+
+        if (isFlying) {
+            const curX = unit.index % this.mapSize;
+            const curY = Math.floor(unit.index / this.mapSize);
+            const tarX = targetIdx % this.mapSize;
+            const tarY = Math.floor(targetIdx / this.mapSize);
+
+            unit.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
+            const dist = Math.sqrt(Math.pow(tarX - curX, 2) + Math.pow(tarY - curY, 2));
+
+            unit.currentMove -= dist;
+            unit.index = targetIdx;
+
+            this.ui.syncUnits(this.units);
+            this.ui.updateInfo(unit, this.grid.board);
+            await this.sleep(400); // Visual travel time delay
+        } else {
+            const path = this.grid.findPath(unit.index, targetIdx, this.units, false);
+            if (path && path.length >= 2) {
+                for (let i = 1; i < path.length; i++) {
+                    const nextIdx = path[i];
+                    const cost = this.grid.getStepCost(unit.index, nextIdx);
+                    if (unit.currentMove < cost) break;
+
+                    const curX = unit.index % this.mapSize;
+                    const curY = Math.floor(unit.index / this.mapSize);
+                    const tarX = nextIdx % this.mapSize;
+                    const tarY = Math.floor(nextIdx / this.mapSize);
+                    unit.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
+
+                    unit.index = nextIdx;
+                    unit.currentMove -= cost;
+                    this.ui.syncUnits(this.units);
+                    this.ui.updateInfo(unit, this.grid.board);
+
+                    if (nextIdx === targetIdx) break; // Reached target
+                    await this.sleep(200);
+                }
+            }
+        }
+
+        this.audio.stopMoveLoop();
+        this.isMoving = false;
+
+        // Explode if successfully reached target
+        if (unit.index === targetIdx) {
+            this.combat(unit, targetUnit);
+        } else {
+            this.refreshHighlights();
+        }
     }
 
     async fireProjectile(startIdx, endIdx, type) {
@@ -713,7 +931,6 @@ export class Game {
 
         const dmg = Math.max(1, atk.atk + Math.floor(Math.random() * 4) - 2);
         def.hp -= dmg;
-        // atk.attacksLeft--; // REMOVED: Consumed at start
 
         this.ui.showFloat(def.index, `-${dmg}`, '#ef4444');
 
@@ -723,34 +940,56 @@ export class Game {
             setTimeout(() => defEl.style.transform = "translate(0,0)", 100);
         }
 
-        if (def.hp <= 0) {
-            // AUDIO: Explosion
-            if (def.type === 'wall') {
-                this.audio.playOneShot('explode_wall');
-            } else {
-                this.audio.playOneShot('explode');
+        const isKamikaze = (atk.type === 'kamikaze_drone_ground' || atk.type === 'kamikaze_drone_air');
+        if (isKamikaze) {
+            const splashDmg = Math.floor(atk.atk * 0.2); // 20%
+            const neighbors = this.grid.getNeighbors(def.index);
+            for (let nIdx of neighbors) {
+                const target = this.getUnitAt(nIdx);
+                if (target && target !== atk && target !== def) {
+                    // Ground splash doesn't hit flying units
+                    if (atk.type === 'kamikaze_drone_ground' && target.type === 'kamikaze_drone_air') {
+                        continue;
+                    }
+                    target.hp -= splashDmg;
+                    this.ui.showFloat(target.index, `-${splashDmg}`, '#f97316');
+                }
             }
+            atk.hp = 0; // Destroy the kamikaze
+        }
 
-            if (def.owner === 'enemy') this.stats.unitsDestroyed++; // STATS
-            if (def.owner === 'player') this.stats.unitsLost++;     // STATS
+        // Handle all units that might have died (including Kamikaze and splash victims)
+        const allUnits = [...this.units];
+        for (let unit of allUnits) {
+            if (unit.hp <= 0 && this.units.includes(unit)) {
+                // AUDIO: Explosion
+                if (unit.type === 'wall') {
+                    this.audio.playOneShot('explode_wall');
+                } else {
+                    this.audio.playOneShot('explode');
+                }
 
-            if (def.type === 'deep_drill') {
-                this.grid.board[def.index].type = 'tiberium';
-                this.grid.board[def.index].tiberium = { max: 500, current: 500, yield: 50, class: 'tib-large' };
-                this.ui.renderGrid(this.grid.board);
-                this.ui.showFloat(def.index, "DEBRIS FIELD", "#10b981");
+                if (unit.owner === 'enemy') this.stats.unitsDestroyed++; // STATS
+                if (unit.owner === 'player') this.stats.unitsLost++;     // STATS
+
+                if (unit.type === 'deep_drill') {
+                    this.grid.board[unit.index].type = 'tiberium';
+                    this.grid.board[unit.index].tiberium = { max: 500, current: 500, yield: 50, class: 'tib-large' };
+                    this.ui.renderGrid(this.grid.board);
+                    this.ui.showFloat(unit.index, "DEBRIS FIELD", "#10b981");
+                }
+
+                this.units = this.units.filter(u => u !== unit);
+
+                // Se muore l'unità selezionata, ferma il loop audio
+                if (this.selectedUnit === unit) {
+                    this.selectedUnit = null;
+                    this.audio.stopSelectionLoop();
+                    this.ui.toggleMenus(null);
+                }
+
+                if (unit.type === 'base') this.endGame(unit.owner === 'enemy');
             }
-
-            this.units = this.units.filter(u => u !== def);
-
-            // Se muore l'unità selezionata, ferma il loop audio
-            if (this.selectedUnit === def) {
-                this.selectedUnit = null;
-                this.audio.stopSelectionLoop();
-                this.ui.toggleMenus(null);
-            }
-
-            if (def.type === 'base') this.endGame(def.owner === 'enemy');
         }
 
         if (!isAutomated) {
@@ -801,6 +1040,19 @@ export class Game {
         this.refreshHighlights();
     }
 
+    activateFactoryMode(type) {
+        if (this.isMoving) return;
+        if (!this.selectedUnit || this.selectedUnit.type !== 'builder') return;
+        if (this.selectedUnit.attacksLeft <= 0) { this.ui.showFloat(this.selectedUnit.index, "NO ACTIONS", "#ef4444"); return; }
+
+        const cost = UNIT_TYPES[type].cost;
+        if (this.resources.player < cost) { this.ui.showFloat(this.selectedUnit.index, `NEED ${cost} RES`, "#ef4444"); return; }
+
+        this.builderMode = 'factory_selection';
+        this.factoryTargetType = type;
+        this.refreshHighlights();
+    }
+
     executeRepair(targetUnit) {
         if (!targetUnit) return;
         if (targetUnit.owner !== this.selectedUnit.owner) {
@@ -832,6 +1084,39 @@ export class Game {
         this.ui.syncUnits(this.units);
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
         this.ui.toggleMenus(this.selectedUnit); // Keep menu open
+        this.refreshHighlights();
+    }
+
+    executeTransformFactory(indices, targetType) {
+        const cost = UNIT_TYPES[targetType].cost;
+        this.resources.player -= cost;
+
+        const builder = this.selectedUnit;
+        const mainIdx = Math.min(...indices);
+        const occupied = indices.filter(idx => idx !== mainIdx);
+
+        // Transform the builder
+        builder.index = mainIdx;
+        builder.type = 'transformer';
+        builder.maxHp = UNIT_TYPES[targetType].hp;
+        builder.hp = builder.maxHp;
+        builder.size = UNIT_TYPES[targetType].size;
+        builder.maxMove = 0; builder.currentMove = 0; builder.attacksLeft = 0;
+        builder.constructionTime = 3;
+        builder.transformTarget = targetType;
+        builder.occupiedIndices = occupied;
+
+        // AUDIO: Transform
+        this.audio.playOneShot('transform');
+        // Switch loop to construction loop
+        this.audio.playSelectionLoop('transformer');
+
+        this.ui.showFloat(mainIdx, "CONSTRUCTING...", "#fbbf24");
+        this.ui.syncUnits(this.units);
+        this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
+        this.ui.toggleMenus(null);
+        this.builderMode = null;
+        this.currentAreaPreview = null;
         this.refreshHighlights();
     }
 
@@ -920,19 +1205,27 @@ export class Game {
 
     buildUnit(type) {
         if (this.isMoving) return; // Guard logic
-        if (!this.selectedUnit || this.selectedUnit.type !== 'base') return;
+        if (!this.selectedUnit) return;
+
+        const validBuilders = ['base', 'barracks', 'drone_factory'];
+        if (!validBuilders.includes(this.selectedUnit.type)) return;
+
         const cost = UNIT_TYPES[type].cost;
         if (this.resources.player < cost) { this.ui.showFloat(this.selectedUnit.index, "NO FUNDS", "#ef4444"); return; }
-        const idx = this.findSpawnSpot(this.selectedUnit.index);
+
+        let idx = this.findSpawnSpot(this.selectedUnit.index);
+
+        // Factories are 2x2. finding spawn spot from top-left index might be insufficient or needs adjustment.
+        // Assuming findSpawnSpot handles it or we'll look around the 2x2 base.
+        // The findSpawnSpot looks up to radius 2, so it naturally covers 2x2 size.
+
         if (idx !== -1) {
             this.resources.player -= cost;
             const u = this.addUnit(type, idx, 'player');
             u.currentMove = 0; u.attacksLeft = 0;
-            // this.selectedUnit = null; // REMOVED: Keep base selected
 
             // AUDIO: Build/Spawn sound (using transform for now)
             this.audio.playOneShot('transform');
-            // this.audio.stopSelectionLoop(); // REMOVED: Keep loop playing
 
             this.ui.toggleMenus(this.selectedUnit); // Keep menus open
             this.ui.syncUnits(this.units);
@@ -1108,7 +1401,18 @@ export class Game {
         return false;
     }
 
+    canTarget(attacker, defender) {
+        if (defender.type === 'kamikaze_drone_air') {
+            // Only air drones and deep_drill can target air units
+            if (attacker.type !== 'kamikaze_drone_air' && attacker.type !== 'deep_drill') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     isTargetInRange(attacker, target) {
+        if (!this.canTarget(attacker, target)) return false;
         const sx = attacker.index % this.mapSize; const sy = Math.floor(attacker.index / this.mapSize);
         const tx = target.index % this.mapSize; const ty = Math.floor(target.index / this.mapSize);
         const dx = sx - tx; const dy = sy - ty;
