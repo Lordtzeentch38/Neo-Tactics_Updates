@@ -61,6 +61,7 @@ export class UI {
             if (t.type === 'obstacle') el.innerHTML = '<div class="obstacle"></div>';
             else if (t.tiberium) el.innerHTML = `<div class="tiberium ${t.tiberium.class}"><div class="tib-crystal"></div></div>`;
             el.onclick = () => this.game.handleTileClick(t.id);
+            el.onmouseenter = () => this.game.handleTileMouseEnter(t.id);
             el.oncontextmenu = (e) => {
                 e.preventDefault();
                 this.game.handleTileRightClick(t.id, e);
@@ -120,6 +121,17 @@ export class UI {
             el.style.left = `${x}px`;
             el.style.top = `${y}px`;
 
+            // Dimensione (Supporto 2x2)
+            if (u.size === 2) {
+                el.style.width = '128px';
+                el.style.height = '128px';
+                el.classList.add('unit-2x2');
+            } else {
+                el.style.width = '64px';
+                el.style.height = '64px';
+                el.classList.remove('unit-2x2');
+            }
+
             // 2. Icona (Solo se cambia tipo o è nuovo)
             const inner = el.querySelector('.unit-inner');
             if (isNew || el.dataset.type !== u.type) {
@@ -162,7 +174,12 @@ export class UI {
                 dotsContainer.classList.add('hidden');
                 pendingContainer.classList.remove('hidden');
 
-                const maxTime = u.type === 'transformer' ? (u.transformTarget === 'deep_drill' ? 5 : 2) : 1;
+                let maxTime = 1;
+                if (u.type === 'transformer') {
+                    if (u.transformTarget === 'deep_drill') maxTime = 5;
+                    else if (u.transformTarget === 'light_factory' || u.transformTarget === 'drone_factory') maxTime = 3;
+                    else maxTime = 2;
+                }
                 const prog = ((maxTime - u.constructionTime) / maxTime) * 100;
                 el.querySelector('.pending-fill').style.width = `${prog}%`;
 
@@ -190,9 +207,9 @@ export class UI {
         });
     }
 
-    refreshHighlights(selectedUnit, validMoves, validAttacks, builderMode, board, units, rangeTiles = []) {
+    refreshHighlights(selectedUnit, validMoves, validAttacks, builderMode, board, units, rangeTiles = [], areaPreview = null) {
         document.querySelectorAll('.tile').forEach(el => {
-            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target', 'range-highlight', 'repair-target-player', 'repair-target-enemy');
+            el.classList.remove('selected', 'selected-enemy', 'valid-move', 'valid-attack', 'build-target', 'range-highlight', 'repair-target-player', 'repair-target-enemy', 'area-preview-valid', 'area-preview-invalid');
             const i = parseInt(el.dataset.index);
 
             if (selectedUnit && selectedUnit.index === i) {
@@ -241,6 +258,15 @@ export class UI {
                 if (el) {
                     el.classList.add('valid-attack');
                     el.classList.remove('range-highlight'); // Target overrides range
+                }
+            });
+        }
+
+        if (areaPreview) {
+            areaPreview.indices.forEach(idx => {
+                const el = this.gridLayer.querySelector(`.tile[data-index="${idx}"]`);
+                if (el) {
+                    el.classList.add(areaPreview.valid ? 'area-preview-valid' : 'area-preview-invalid');
                 }
             });
         }

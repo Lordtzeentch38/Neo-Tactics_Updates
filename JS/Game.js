@@ -17,6 +17,7 @@ export class Game {
         this.builderMode = null;
         this.gameOver = false;
         this.isMoving = false;
+        this.currentAreaPreview = null;
 
         // Camera State
         this.camera = { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 };
@@ -314,7 +315,7 @@ export class Game {
         }
     }
 
-    addUnit(type, index, owner) {
+    addUnit(type, index, owner, occupiedIndices = []) {
         const t = UNIT_TYPES[type];
         const u = {
             id: Math.random().toString(36).substr(2),
@@ -323,13 +324,14 @@ export class Game {
             attacksLeft: t.maxAttacks,
             rotation: owner === 'player' ? 0 : 180,
             constructionTime: 0,
-            transformTarget: null
+            transformTarget: null,
+            occupiedIndices: occupiedIndices
         };
         this.units.push(u);
         return u;
     }
 
-    getUnitAt(i) { return this.units.find(u => u.index == i); }
+    getUnitAt(i) { return this.units.find(u => u.index == i || (u.occupiedIndices && u.occupiedIndices.includes(i))); }
     dist(a, b) {
         const dx = (a % this.mapSize) - (b % this.mapSize);
         const dy = Math.floor(a / this.mapSize) - Math.floor(b / this.mapSize);
@@ -343,6 +345,18 @@ export class Game {
 
         // Check is game started
         if (!this.gameStarted || !this.playerTurn || this.gameOver || this.isMoving) return;
+
+        // Factory Selection
+        if (this.selectedUnit && this.builderMode === 'factory_selection') {
+            if (this.currentAreaPreview && this.isValidArea(this.currentAreaPreview, this.selectedUnit.index)) {
+                this.executeTransformFactory(this.currentAreaPreview, this.factoryTargetType);
+                return;
+            } else {
+                this.builderMode = null;
+                this.currentAreaPreview = null;
+                this.refreshHighlights();
+            }
+        }
 
         // Builder Mode
         if (this.selectedUnit && this.selectedUnit.type === 'builder' && this.builderMode === 'wall') {
@@ -428,6 +442,65 @@ export class Game {
         this.ui.showContextMenu(event.clientX, event.clientY, u);
     }
 
+    handleTileMouseEnter(i) {
+        if (!this.gameStarted || !this.playerTurn || this.gameOver || this.isMoving) return;
+
+        if (this.builderMode === 'factory_selection' && this.selectedUnit) {
+            const areas = this.getPossible2x2Areas(this.selectedUnit.index);
+            let bestArea = null;
+            let minDist = Infinity;
+            const mx = i % this.mapSize;
+            const my = Math.floor(i / this.mapSize);
+
+            areas.forEach(area => {
+                const tx = (area[0] % this.mapSize) + 0.5;
+                const ty = Math.floor(area[0] / this.mapSize) + 0.5;
+                const d = Math.sqrt((mx - tx) ** 2 + (my - ty) ** 2);
+                if (d < minDist) {
+                    minDist = d;
+                    bestArea = area;
+                }
+            });
+            this.currentAreaPreview = bestArea;
+            this.refreshHighlights();
+        }
+    }
+
+    getPossible2x2Areas(builderIdx) {
+        const x = builderIdx % this.mapSize;
+        const y = Math.floor(builderIdx / this.mapSize);
+        const areas = [];
+        const candidates = [
+            { cx: x, cy: y },
+            { cx: x - 1, cy: y },
+            { cx: x, cy: y - 1 },
+            { cx: x - 1, cy: y - 1 }
+        ];
+
+        candidates.forEach(c => {
+            if (c.cx >= 0 && c.cx < this.mapSize - 1 && c.cy >= 0 && c.cy < this.mapSize - 1) {
+                const indices = [
+                    c.cy * this.mapSize + c.cx,
+                    c.cy * this.mapSize + (c.cx + 1),
+                    (c.cy + 1) * this.mapSize + c.cx,
+                    (c.cy + 1) * this.mapSize + (c.cx + 1)
+                ];
+                areas.push(indices);
+            }
+        });
+        return areas;
+    }
+
+    isValidArea(indices, builderIdx) {
+        const builder = this.units.find(u => u.index === builderIdx);
+        return indices.every(idx => {
+            const u = this.getUnitAt(idx);
+            if (u && u !== builder) return false;
+            if (this.grid.board[idx].type === 'obstacle' || this.grid.board[idx].type === 'tiberium') return false;
+            return true;
+        });
+    }
+
     requestAbandonSession() {
         this.ui.showConfirmExit();
     }
@@ -483,7 +556,15 @@ export class Game {
             rangeTiles = this.getTilesInRange(this.selectedUnit);
         }
 
-        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units, rangeTiles);
+        let areaPreview = null;
+        if (this.builderMode === 'factory_selection' && this.currentAreaPreview) {
+            areaPreview = {
+                indices: this.currentAreaPreview,
+                valid: this.isValidArea(this.currentAreaPreview, this.selectedUnit.index)
+            };
+        }
+
+        this.ui.refreshHighlights(this.selectedUnit, moves, attacks, this.builderMode, this.grid.board, this.units, rangeTiles, areaPreview);
     }
 
     getTilesInRange(unit) {
@@ -801,6 +882,19 @@ export class Game {
         this.refreshHighlights();
     }
 
+    activateFactoryMode(type) {
+        if (this.isMoving) return;
+        if (!this.selectedUnit || this.selectedUnit.type !== 'builder') return;
+        if (this.selectedUnit.attacksLeft <= 0) { this.ui.showFloat(this.selectedUnit.index, "NO ACTIONS", "#ef4444"); return; }
+
+        const cost = UNIT_TYPES[type].cost;
+        if (this.resources.player < cost) { this.ui.showFloat(this.selectedUnit.index, `NEED ${cost} RES`, "#ef4444"); return; }
+
+        this.builderMode = 'factory_selection';
+        this.factoryTargetType = type;
+        this.refreshHighlights();
+    }
+
     executeRepair(targetUnit) {
         if (!targetUnit) return;
         if (targetUnit.owner !== this.selectedUnit.owner) {
@@ -832,6 +926,39 @@ export class Game {
         this.ui.syncUnits(this.units);
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
         this.ui.toggleMenus(this.selectedUnit); // Keep menu open
+        this.refreshHighlights();
+    }
+
+    executeTransformFactory(indices, targetType) {
+        const cost = UNIT_TYPES[targetType].cost;
+        this.resources.player -= cost;
+
+        const builder = this.selectedUnit;
+        const mainIdx = Math.min(...indices);
+        const occupied = indices.filter(idx => idx !== mainIdx);
+
+        // Transform the builder
+        builder.index = mainIdx;
+        builder.type = 'transformer';
+        builder.maxHp = UNIT_TYPES[targetType].hp;
+        builder.hp = builder.maxHp;
+        builder.size = UNIT_TYPES[targetType].size;
+        builder.maxMove = 0; builder.currentMove = 0; builder.attacksLeft = 0;
+        builder.constructionTime = 3;
+        builder.transformTarget = targetType;
+        builder.occupiedIndices = occupied;
+
+        // AUDIO: Transform
+        this.audio.playOneShot('transform');
+        // Switch loop to construction loop
+        this.audio.playSelectionLoop('transformer');
+
+        this.ui.showFloat(mainIdx, "CONSTRUCTING...", "#fbbf24");
+        this.ui.syncUnits(this.units);
+        this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
+        this.ui.toggleMenus(null);
+        this.builderMode = null;
+        this.currentAreaPreview = null;
         this.refreshHighlights();
     }
 
