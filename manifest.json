@@ -1,7 +1,7 @@
 {
-    "version": "0.18.0 - CodeName: Humans & Drones",
+    "version": "0.18.1 - CodeName: Humans & Drones - Fix",
     "assets": {
-        "index.html": "08f5e7f6595d92cd03719d009ed34429",
+        "index.html": "ddd039ff850afcb2abb6c7914eafa3e0",
         "Neo_Tactics_Web.code-workspace": "3f73540e66da7569826533b40ca807e4",
         "style.css": "a9907327194e3f002d20bba1439a6d8b",
         "assets/images/Neo-Tactics-Cover.png": "814e02a93aab554b96de66606c052f11",
