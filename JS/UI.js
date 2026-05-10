@@ -350,19 +350,28 @@ export class UI {
             const colorClass = unit.owner === 'player' ? 'text-blue-300' : 'text-red-400';
             this.ctxInfo.innerHTML = `
                 <div class="flex items-center gap-2">
-                    <img src="assets/images/units/${unit.type}.png" class="w-10 h-10 object-contain rounded border border-white/10 bg-black/40">
+                    <img class="ctx-unit-img w-10 h-10 object-contain rounded border border-white/10 bg-black/40">
                     <div class="leading-none">
-                        <div class="font-bold text-xs ${colorClass}">${unit.name.toUpperCase()}</div>
-                        <div class="text-[9px] text-gray-400 italic">${unit.desc}</div>
+                        <div class="ctx-unit-name font-bold text-xs ${colorClass}"></div>
+                        <div class="ctx-unit-desc text-[9px] text-gray-400 italic"></div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] bg-black/20 p-1 rounded">
-                    <div class="flex justify-between"><span class="text-gray-500">HP</span> <span class="text-white">${unit.hp}/${unit.maxHp}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">ATK</span> <span class="text-white">${unit.atk}x${unit.maxAttacks}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">MOV</span> <span class="text-white">${unit.maxMove}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">RNG</span> <span class="text-white">${unit.range}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">HP</span> <span class="ctx-unit-hp text-white"></span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">ATK</span> <span class="ctx-unit-atk text-white"></span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">MOV</span> <span class="ctx-unit-mov text-white"></span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">RNG</span> <span class="ctx-unit-rng text-white"></span></div>
                 </div>
             `;
+
+            this.ctxInfo.querySelector('.ctx-unit-img').src = `assets/images/units/${unit.type}.png`;
+            this.ctxInfo.querySelector('.ctx-unit-name').textContent = unit.name.toUpperCase();
+            this.ctxInfo.querySelector('.ctx-unit-desc').textContent = unit.desc;
+            this.ctxInfo.querySelector('.ctx-unit-hp').textContent = `${unit.hp}/${unit.maxHp}`;
+            this.ctxInfo.querySelector('.ctx-unit-atk').textContent = `${unit.atk}x${unit.maxAttacks}`;
+            this.ctxInfo.querySelector('.ctx-unit-mov').textContent = unit.maxMove;
+            this.ctxInfo.querySelector('.ctx-unit-rng').textContent = unit.range;
+
             this.ctxInfo.classList.remove('hidden');
         } else {
             this.ctxInfo.classList.add('hidden');
