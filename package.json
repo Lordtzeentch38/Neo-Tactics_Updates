@@ -1,0 +1,8 @@
+{
+  "name": "neo-tactics",
+  "version": "0.17.1",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
