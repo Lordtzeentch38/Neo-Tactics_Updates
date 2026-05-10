@@ -1,4 +1,4 @@
-import { DEFAULT_BOARD_SIZE, TIBERIUM_TYPES } from './Constants.js';
+import { DEFAULT_BOARD_SIZE, TIBERIUM_TYPES, MOVE_COSTS } from './Constants.js';
 
 export class Grid {
     constructor(size = DEFAULT_BOARD_SIZE) {
@@ -47,7 +47,7 @@ export class Grid {
     getStepCost(fromIdx, toIdx) {
         const x1 = fromIdx % this.size, y1 = Math.floor(fromIdx / this.size);
         const x2 = toIdx % this.size, y2 = Math.floor(toIdx / this.size);
-        return (x1 !== x2 && y1 !== y2) ? 2 : 1;
+        return (x1 !== x2 && y1 !== y2) ? MOVE_COSTS.DIAGONAL : MOVE_COSTS.ORTHOGONAL;
     }
 
     getNeighbors(idx) {

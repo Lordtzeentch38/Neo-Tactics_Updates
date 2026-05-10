@@ -46,6 +46,23 @@ export const UNIT_TYPES = {
     kamikaze_drone_air: { name: "Kamikaze (A)", hp: 30, atk: 120, range: 1, maxMove: 7, maxAttacks: 1, cost: 100, desc: "Explosive Air Drone (AoE)" }
 };
 
+export const MOVE_COSTS = {
+    ORTHOGONAL: 1,
+    DIAGONAL: 2
+};
+
+export const GAME_TIMINGS = {
+    MOVE_STEP: 200,
+    TRAVEL_FLY: 400,
+    RECOIL: 150,
+    LUNGE: 100,
+    OVERWATCH_DELAY: 200,
+    OVERWATCH_FIRE: 250,
+    AI_ACTION: 500,
+    TURN_TRANSITION: 800,
+    AI_DELAY: 400
+};
+
 // --- NUOVA SEZIONE AUDIO ---
 export const AUDIO_FILES = {
     // Selezione (Loop)

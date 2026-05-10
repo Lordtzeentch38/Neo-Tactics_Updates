@@ -1,4 +1,4 @@
-import { UNIT_TYPES, DEFAULT_BOARD_SIZE } from './Constants.js';
+import { UNIT_TYPES, DEFAULT_BOARD_SIZE, GAME_TIMINGS } from './Constants.js';
 import { Grid } from './Grid.js';
 import { UI } from './UI.js';
 import { AudioManager } from './AudioManager.js';
@@ -716,7 +716,7 @@ export class Game {
 
             // Flying units move fast, maybe 1 overwatch check at end or simulate path overwatch
             // For simplicity, we just do one overwatch check at destination
-            await this.sleep(400); // Visual travel time delay
+            await this.sleep(GAME_TIMINGS.TRAVEL_FLY); // Visual travel time delay
             await this.checkOverwatch(unit);
 
             this.audio.stopMoveLoop();
@@ -752,7 +752,7 @@ export class Game {
             // Check overwatch for everyone
             const killed = await this.checkOverwatch(unit);
             if (killed) break;
-            await this.sleep(200);
+            await this.sleep(GAME_TIMINGS.MOVE_STEP);
         }
 
         // AUDIO: Stop Move Loop
@@ -783,7 +783,7 @@ export class Game {
 
             this.ui.syncUnits(this.units);
             this.ui.updateInfo(unit, this.grid.board);
-            await this.sleep(400); // Visual travel time delay
+            await this.sleep(GAME_TIMINGS.TRAVEL_FLY); // Visual travel time delay
         } else {
             const path = this.grid.findPath(unit.index, targetIdx, this.units, false);
             if (path && path.length >= 2) {
@@ -804,7 +804,7 @@ export class Game {
                     this.ui.updateInfo(unit, this.grid.board);
 
                     if (nextIdx === targetIdx) break; // Reached target
-                    await this.sleep(200);
+                    await this.sleep(GAME_TIMINGS.MOVE_STEP);
                 }
             }
         }
@@ -902,9 +902,9 @@ export class Game {
                     const missileFlight = this.fireProjectile(atk.index, def.index, 'missile');
 
                     // Animation proceeds independently
-                    await this.sleep(150);
+                    await this.sleep(GAME_TIMINGS.RECOIL);
                     atkEl.style.transform = `translate(0, 0)`;
-                    await this.sleep(150);
+                    await this.sleep(GAME_TIMINGS.RECOIL);
                     atkEl.classList.remove('unit-lunge');
 
                     // Wait for impact
@@ -922,9 +922,9 @@ export class Game {
                 const dy = (ty - sy) * 25;
                 atkEl.classList.add('unit-lunge');
                 atkEl.style.transform = `translate(${dx}%, ${dy}%)`;
-                await this.sleep(100);
+                await this.sleep(GAME_TIMINGS.LUNGE);
                 atkEl.style.transform = `translate(0, 0)`;
-                await this.sleep(100);
+                await this.sleep(GAME_TIMINGS.LUNGE);
                 atkEl.classList.remove('unit-lunge');
             }
         }
@@ -1019,7 +1019,7 @@ export class Game {
                 const tarX = enemyAttacker.index % this.mapSize; const tarY = Math.floor(enemyAttacker.index / this.mapSize);
                 turret.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
                 this.ui.syncUnits(this.units);
-                await this.sleep(200);
+                await this.sleep(GAME_TIMINGS.OVERWATCH_DELAY);
                 await this.combat(turret, enemyAttacker, true);
             }
         }
@@ -1273,7 +1273,7 @@ export class Game {
         this.ui.indicator.innerText = "ENEMY TURN";
         this.ui.indicator.className = "text-xs font-bold text-red-500 animate-pulse";
 
-        await this.sleep(800);
+        await this.sleep(GAME_TIMINGS.TURN_TRANSITION);
         this.processResources('enemy');
         this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
 
@@ -1374,7 +1374,7 @@ export class Game {
         for (let t of turrets) {
             if (this.isTargetInRange(t, movingUnit)) {
                 this.ui.showFloat(t.index, "OVERWATCH!", "#fbbf24");
-                await this.sleep(200);
+                await this.sleep(GAME_TIMINGS.OVERWATCH_DELAY);
                 const curX = t.index % this.mapSize; const curY = Math.floor(t.index / this.mapSize);
                 const tarX = movingUnit.index % this.mapSize; const tarY = Math.floor(movingUnit.index / this.mapSize);
                 t.rotation = Math.atan2(tarY - curY, tarX - curX) * (180 / Math.PI);
@@ -1392,7 +1392,7 @@ export class Game {
                     const target = validTargets[0];
 
                     await this.combat(t, target, true);
-                    await this.sleep(250);
+                    await this.sleep(GAME_TIMINGS.OVERWATCH_FIRE);
 
                     if (movingUnit.hp <= 0) return true;
                 }
@@ -1442,7 +1442,7 @@ export class Game {
                     this.ui.syncUnits(this.units);
                     this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
                     await this.checkOverwatch(u);
-                    await this.sleep(400);
+                    await this.sleep(GAME_TIMINGS.AI_DELAY);
                 }
             }
         }
@@ -1469,7 +1469,7 @@ export class Game {
                             this.audio.playOneShot('transform', 1.5);
                             this.ui.syncUnits(this.units);
                             this.ui.updateResources(this.resources.player, this.resources.enemy, this.turn);
-                            await this.sleep(400);
+                            await this.sleep(GAME_TIMINGS.AI_DELAY);
                             repaired = true;
                             break;
                         }
@@ -1491,7 +1491,7 @@ export class Game {
                         unit.transformTarget = 'missile_turret';
                         this.ui.showFloat(unit.index, "MISSILE SYS...", "#ef4444");
                         this.ui.syncUnits(this.units);
-                        await this.sleep(400);
+                        await this.sleep(GAME_TIMINGS.AI_DELAY);
                         continue;
                     }
                     // AI Logic: Standard Turret
@@ -1505,7 +1505,7 @@ export class Game {
                         unit.transformTarget = 'turret';
                         this.ui.showFloat(unit.index, "BUILDING...", "#ef4444");
                         this.ui.syncUnits(this.units);
-                        await this.sleep(400);
+                        await this.sleep(GAME_TIMINGS.AI_DELAY);
                         continue;
                     }
                 }
@@ -1529,7 +1529,7 @@ export class Game {
                         const targetIdx = attacks.sort((a, b) => this.getUnitAt(a).hp - this.getUnitAt(b).hp)[0];
                         await this.combat(unit, this.getUnitAt(targetIdx));
                         actionsTaken = true;
-                        await this.sleep(500);
+                        await this.sleep(GAME_TIMINGS.AI_ACTION);
                         continue;
                     }
                 }
